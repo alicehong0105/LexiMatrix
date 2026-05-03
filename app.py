@@ -1,4 +1,103 @@
 import streamlit as st
+import httpx
+
+# --- 1. 從 Secrets 讀取連線資訊 ---
+URL = st.secrets["connections"]["supabase"]["url"]
+KEY = st.secrets["connections"]["supabase"]["key"]
+
+headers = {
+    "apikey": KEY,
+    "Authorization": f"Bearer {KEY}",
+    "Content-Type": "application/json"
+}
+
+# --- 2. 功能函式 ---
+
+def add_word_to_supabase(word_data):
+    """將完整的單字資料送往雲端"""
+    api_url = f"{URL}/rest/v1/vocabulary"
+    try:
+        response = httpx.post(api_url, json=word_data, headers=headers)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        st.error(f"❌ 儲存失敗: {e}")
+        return False
+
+def load_data_from_supabase():
+    """從雲端抓取資料"""
+    api_url = f"{URL}/rest/v1/vocabulary?select=*&order=id.desc"
+    try:
+        response = httpx.get(api_url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"❌ 讀取失敗: {e}")
+        return []
+
+# --- 3. 網頁介面 ---
+
+st.set_page_config(page_title="LexiMatrix 專業版", page_icon="📝")
+st.title("📝 我的全功能雲端單字庫")
+
+# 【A 區塊：進階新增表單】
+with st.expander("➕ 加入新單字 (詳細模式)", expanded=False):
+    with st.form(key="advanced_add_form", clear_on_submit=True):
+        col1, col2 = st.columns([2, 2])
+        
+        with col1:
+            word = st.text_input("英文單字", placeholder="例如: persist")
+            # 詞性複選功能
+            pos_list = st.multiselect("詞性 (可複選)", ["n.", "v.", "adj.", "adv.", "prep.", "conj."])
+            category = st.text_input("類別", placeholder="例如: 考試、托福")
+            
+        with col2:
+            meaning = st.text_area("中文解釋", placeholder="輸入定義...")
+            other_forms = st.text_input("三態/變化", placeholder="例如: persisted, persisting")
+            mastery = st.slider("掌握等級 (0-5)", 0, 5, 1)
+
+        submit = st.form_submit_button("🚀 儲存到雲端資料庫")
+
+        if submit:
+            if word and meaning:
+                # 這裡要對齊你的 Supabase 欄位名稱
+                # 如果你的欄位名稱是「中文」，這裡就要改寫成中文
+                payload = {
+                    "word": word,
+                    "pos": ", ".join(pos_list), # 將清單轉為字串 "n., v."
+                    "meaning_zh": meaning,      # 💡 請檢查資料庫是 meaning 還是 meaning_zh
+                    "category": category,
+                    "other_forms": other_forms,
+                    "mastery": mastery,
+                    "user_email": "alice@test.com"
+                }
+                
+                if add_word_to_supabase(payload):
+                    st.success(f"✅ '{word}' 已同步至雲端！")
+                    st.rerun()
+            else:
+                st.warning("⚠️ 單字和解釋是必填項喔！")
+
+# 【B 區塊：顯示清單】
+data = load_data_from_supabase()
+
+if data:
+    st.write(f"📊 目前共有 {len(data)} 個單字")
+    for item in data:
+        with st.container():
+            c1, c2, c3 = st.columns([1.5, 3, 1])
+            with c1:
+                st.info(f"**{item.get('word')}**")
+                st.caption(f"({item.get('pos')})")
+            with c2:
+                # 這裡的 key 要對應你資料庫的欄位
+                st.write(f"💡 {item.get('meaning_zh')}") 
+                if item.get('other_forms'):
+                    st.caption(f"變化: {item.get('other_forms')}")
+            with c3:
+                st.write(f"⭐ Lvl: {item.get('mastery')}")
+                st.caption(f"#{item.get('category')}")
+            st.divider()
 import json
 import pandas as pd
 from datetime import date, timedelta
@@ -202,60 +301,104 @@ with tabs[1]:
         target_idx = next(i for i, w in enumerate(raw_words) if w.get('單字') == search_word)
         target_w = normalize_word_entry(raw_words[target_idx])
         
-        with st.container(border=True):
-            edit_mode = st.toggle("✏️ 修改資料內容")
-            if edit_mode:
-                with st.form("edit_existing_form"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        new_word = st.text_input("單字", target_w['單字'])
-                        new_pos = st.multiselect("詞性", POS_OPTIONS, default=[p for p in target_w['詞性'] if p in POS_OPTIONS])
-                        new_cat = st.text_input("類別", target_w['類別'])
-                        new_forms = st.text_input("三態/變化", target_w['三態/變化'])
-                        new_mas = st.number_input("手動調整等級 (0~5)", 0, 5, target_w['mastery'])
-                    with col2:
-                        new_mean = st.text_input("中文", target_w['中文'])
-                        new_syn = st.text_input("同義詞", target_w['同義詞'])
-                        new_coll = st.text_input("搭配", target_w['搭配'])
-                    
-                    new_def = st.text_area("定義", target_w['英文解釋'])
-                    new_ex = st.text_area("例句", target_w['例句'])
-                    
-                    if st.form_submit_button("💾 覆蓋儲存"):
-                        raw_words[target_idx] = {
-                            "單字": new_word, "詞性": new_pos, "中文": new_mean,
-                            "類別": new_cat, "三態/變化": new_forms, "英文解釋": new_def,
-                            "例句": new_ex, "同義詞": new_syn, "搭配": new_coll, 
-                            "mastery": new_mas, "last_reviewed": target_w['last_reviewed'],
-                            "next_review": get_next_review_date(new_mas)
-                        }
-                        save_words(raw_words)
-                        st.success("✅ 數據已更新！")
-                        st.rerun()
-            else:
-                # 完整版的單字卡預覽
-                st.markdown(f"### 🔤 {target_w['單字']} ({', '.join(target_w['詞性'])})")
-                st.markdown(f"**類別：** {target_w['類別']} | **中文：** {target_w['中文']}")
-                st.markdown(f"**定義：**\n{target_w['英文解釋'] or '無'}")
-                st.markdown(f"**例句：**\n{target_w['例句'] or '無'}")
-                st.markdown(f"**同義詞：** {target_w['同義詞'] or '無'}")
-                st.markdown(f"**搭配：** {target_w['搭配'] or '無'}")
-                st.markdown(f"**三態/變化：** {target_w['三態/變化'] or '無'} | **目前等級：** L{target_w['mastery']}")
-
-    st.divider()
-    st.subheader("📋 矩陣資料庫總表")
-    view_mode = st.radio("👀 視角切換：", ["✨ 精簡模式 (核心資訊)", "🔍 完整模式 (包含例句/定義)"], horizontal=True)
+       # 第 304 行開始
+with st.container(border=True):
+    # 這裡要縮進 4 個空格
+    edit_mode = st.toggle("✏️ 修改資料內容")
     
-    if words:
-        df = pd.DataFrame(words)
-        df.index = df.index + 1 # 讓 Pandas 的表格編號從 1 開始！
-        
-        display_cols = ["單字", "中文", "詞性", "類別", "mastery", "三態/變化"] if "精簡" in view_mode else df.columns.tolist()
+    if edit_mode:
+        # if 裡面的內容要再縮進 4 個空格（共 8 個）
+        with st.form("edit_existing_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # with 裡面的內容再縮進（共 12 個）
+                new_word = st.text_input("單字", value=target_w.get('單字', ''))
+                
+                # 處理舊的詞性字串轉清單
+                old_pos_str = target_w.get('詞性', '')
+                if isinstance(old_pos_str, list): # 如果原本就是清單
+                    default_pos = old_pos_str
+                else: # 如果是字串則切割
+                    default_pos = [p.strip() for p in old_pos_str.split(',')] if old_pos_str else []
+                
+                new_pos_list = st.multiselect(
+                    "詞性 (可複選)", 
+                    ["n.", "v.", "adj.", "adv.", "prep.", "conj."],
+                    default=[p for p in default_pos if p in ["n.", "v.", "adj.", "adv.", "prep.", "conj."]]
+                )
+                new_pos = ", ".join(new_pos_list) # 轉回字串供儲存
 
-        t0, t1, t2 = st.tabs(["🌱 新錄入/重練 (L0-L1)", "🏃 穩定熟悉 (L2-L3)", "👑 完全精通 (L4-L5)"])
-        with t0: st.dataframe(df[df['mastery'].isin([0, 1])][display_cols], use_container_width=True)
-        with t1: st.dataframe(df[df['mastery'].isin([2, 3])][display_cols], use_container_width=True)
-        with t2: st.dataframe(df[df['mastery'].isin([4, 5])][display_cols], use_container_width=True)
+                # 2. 基本分類
+                new_cat = st.text_input("類別", value=target_w.get('類別', ''))
+                new_forms = st.text_input("三態/變化", value=target_w.get('三態/變化', ''))
+                new_mas = st.number_input("手動調整等級 (0~5)", 0, 5, value=int(target_w.get('mastery', 0)))
+
+            with col2:
+                new_mean = st.text_input("中文", value=target_w.get('中文', ''))
+                new_syn = st.text_input("同義詞", value=target_w.get('同義詞', ''))
+                new_coll = st.text_input("搭配", value=target_w.get('搭配', ''))
+            
+            # 3. 長文字區
+            new_def = st.text_area("定義", value=target_w.get('英文解釋', ''))
+            new_ex = st.text_area("例句", value=target_w.get('例句', ''))
+            
+            if st.form_submit_button("💾 覆蓋儲存並同步雲端"):
+                # 更新原本的資料字典
+                raw_words[target_idx] = {
+                    "單字": new_word, "詞性": new_pos, "中文": new_mean,
+                    "類別": new_cat, "三態/變化": new_forms, "英文解釋": new_def,
+                    "例句": new_ex, "同義詞": new_syn, "搭配": new_coll, 
+                    "mastery": new_mas, "last_reviewed": target_w.get('last_reviewed', ''),
+                    "next_review": get_next_review_date(new_mas)
+                }
+                
+                # 這裡執行儲存 (包含本地儲存 save_words 和你原本的 Supabase 同步)
+                save_words(raw_words)
+                st.success(f"✅ '{new_word}' 數據已更新！")
+                st.rerun()
+    
+    else:
+        # --- 完整版的單字卡預覽 (非編輯模式) ---
+        # 處理詞性顯示，如果是清單就 join，如果是字串就直接顯示
+        display_pos = target_w['詞性']
+        if isinstance(display_pos, list):
+            display_pos = ", ".join(display_pos)
+            
+        st.markdown(f"### 🔤 {target_w['單字']} ({display_pos})")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"**📌 類別：** {target_w['類別']}")
+            st.markdown(f"**💡 中文：** {target_w['中文']}")
+            st.markdown(f"**🔄 三態：** {target_w.get('三態/變化', '無')}")
+        with c2:
+            st.markdown(f"**⭐ 等級：** L{target_w['mastery']}")
+            st.markdown(f"**🔗 搭配：** {target_w.get('搭配', '無')}")
+            st.markdown(f"**👯 同義：** {target_w.get('同義詞', '無')}")
+            
+        st.info(f"**📖 定義：**\n{target_w.get('英文解釋') or '未填寫'}")
+        st.warning(f"**📝 例句：**\n{target_w.get('例句') or '未填寫'}")
+
+# --- 下方的表格顯示區 ---
+st.divider()
+st.subheader("📋 矩陣資料庫總表")
+view_mode = st.radio("👀 視角切換：", ["✨ 精簡模式 (核心資訊)", "🔍 完整模式 (包含例句/定義)"], horizontal=True)
+
+if words:
+    df = pd.DataFrame(words)
+    df.index = df.index + 1
+    
+    # 這裡確保表格顯示的詞性欄位也是美觀的字串
+    if "詞性" in df.columns:
+        df["詞性"] = df["詞性"].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
+
+    display_cols = ["單字", "中文", "詞性", "類別", "mastery", "三態/變化"] if "精簡" in view_mode else df.columns.tolist()
+
+    t0, t1, t2 = st.tabs(["🌱 新錄入/重練 (L0-L1)", "🏃 穩定熟悉 (L2-L3)", "👑 完全精通 (L4-L5)"])
+    with t0: st.dataframe(df[df['mastery'].isin([0, 1])][display_cols], use_container_width=True)
+    with t1: st.dataframe(df[df['mastery'].isin([2, 3])][display_cols], use_container_width=True)
+    with t2: st.dataframe(df[df['mastery'].isin([4, 5])][display_cols], use_container_width=True)
 
 # 3. 訓練模式 
 with tabs[2]:
