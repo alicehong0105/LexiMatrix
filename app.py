@@ -84,7 +84,15 @@ data = load_data_from_supabase()
 if data:
     st.write(f"📊 目前共有 {len(data)} 個單字")
     for item in data:
-        with st.container():
+        # 在顯示清單的地方，請對照這幾個欄位名稱
+        for item in data:
+            word = item.get('word', '未知單字')
+            part_of_speech = item.get('pos', '無詞性') # 對應你的 pos 欄位
+            chinese_meaning = item.get('meaning_zh', '無解釋') # 對應你的 meaning_zh 欄位
+    
+    st.markdown(f"### {word} ({part_of_speech})")
+    st.write(f"💡 解釋：{chinese_meaning}")
+    with st.container():
             c1, c2, c3 = st.columns([1.5, 3, 1])
             with c1:
                 st.info(f"**{item.get('word')}**")
