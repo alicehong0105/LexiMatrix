@@ -6,7 +6,7 @@ import random
 import re
 
 # --- 1. 頁面基本設定 ---
-st.set_page_config(page_title="LexiMatrix Pro", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="LexiMatrix Pro", page_icon="🔮", layout="wide")
 
 # --- 2. 初始化全域狀態 ---
 if 'quiz_state' not in st.session_state:
