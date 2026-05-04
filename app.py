@@ -1,7 +1,7 @@
 import streamlit as st
 import httpx
 
-# --- 1. 網頁基本設定 ---
+# --- 1. 網頁基本設定 (全域唯一) ---
 st.set_page_config(page_title="LexiMatrix Pro", page_icon="🧩", layout="wide")
 
 # --- 2. 從 Secrets 讀取連線資訊 ---
@@ -36,7 +36,7 @@ def add_word_to_supabase(word_data):
         st.error(f"❌ 儲存失敗: {e}")
         return False
 
-# --- 4. 側邊欄導航 (更新為 3 個頁面) ---
+# --- 4. 側邊欄導航 (定義所有頁面) ---
 with st.sidebar:
     st.title("🧩 LexiMatrix 導航")
     choice = st.radio(
@@ -44,20 +44,18 @@ with st.sidebar:
         ["📋 管理矩陣", "🎯 訓練模式", "📅 遺忘排程"]
     )
     st.divider()
-    st.caption("版本：v1.2 | 已連線至 Supabase")
+    st.caption("版本：v1.3 | 已連線至 Supabase")
 
-# --- 5. 頁面邏輯分流 ---
+# --- 5. 頁面邏輯分流 (這是確保功能不重複的關鍵) ---
 
-# --- 頁面 A：管理矩陣 ---
 if choice == "📋 管理矩陣":
     st.title("📋 矩陣資料庫總表")
     
-    # 讀取資料
+    # 讀取並顯示資料
     data = load_data_from_supabase()
     
     if data:
         st.write(f"📊 目前共有 {len(data)} 個單字")
-        # 顯示清單
         for item in data:
             with st.container():
                 c1, c2, c3 = st.columns([1.5, 3, 1])
@@ -73,7 +71,7 @@ if choice == "📋 管理矩陣":
                     st.caption(f"#{item.get('category')}")
                 st.divider()
     
-    # 新增功能放在管理頁面最下方，並用 expander 收納
+    # 【唯一的】新增功能，放在管理頁面底部，且預設收合
     with st.expander("➕ 新增單字至矩陣"):
         col1, col2 = st.columns(2)
         with col1:
@@ -100,23 +98,23 @@ if choice == "📋 管理矩陣":
                     "mastery": 0
                 }
                 if add_word_to_supabase(payload):
-                    st.success("✅ 已存入資料庫！")
+                    st.success(f"✅ {new_word} 已成功存入！")
                     st.rerun()
             else:
-                st.warning("⚠️ 英文與中文解釋是必填喔！")
+                st.warning("⚠️ 英文與中文解釋為必填！")
 
-# --- 頁面 B：訓練模式 ---
 elif choice == "🎯 訓練模式":
     st.title("🎯 單字訓練模式")
-    st.info("這裡是專屬訓練空間。")
-    # 這裡只會出現一次，原本外面多出來的新增單字已經被我刪掉了
-    st.write("🏃 準備好開始練習了嗎？（測驗邏輯開發中）")
+    st.info("這裡是專屬訓練空間，頁面非常乾淨。")
+    # 這裡絕對不會出現管理頁面的表格或新增按鈕
+    st.write("🏃 準備好開始練習了嗎？")
 
-# --- 頁面 C：遺忘排程 ---
 elif choice == "📅 遺忘排程":
-    st.title("📅 艾賓浩斯遺忘排程")
-    st.write("根據你的掌握等級 (Mastery)，這裡會顯示今天該複習的單字。")
-    # 這裡可以放根據 next_review 排序的資料
+    st.title("📅 遺忘排程")
+    st.write("複習清單載入中...")
+
+# --- 這裡之後不可以再寫任何 st.text_input 或 st.button ---
+# --- 否則它們會出現在每一個頁面的底部 ---
 import json
 import pandas as pd
 from datetime import date, timedelta
