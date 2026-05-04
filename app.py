@@ -1,7 +1,10 @@
 import streamlit as st
 import httpx
 
-# --- 1. 從 Secrets 讀取連線資訊 ---
+# --- 1. 網頁基本設定 (必須放在最前面，且只能有一次) ---
+st.set_page_config(page_title="LexiMatrix 專業版", page_icon="📝", layout="wide")
+
+# --- 2. 從 Secrets 讀取連線資訊 ---
 URL = st.secrets["connections"]["supabase"]["url"]
 KEY = st.secrets["connections"]["supabase"]["key"]
 
@@ -11,7 +14,7 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# --- 2. 功能函式 ---
+# --- 3. 功能函式 ---
 
 def add_word_to_supabase(word_data):
     """將完整的單字資料送往雲端"""
@@ -35,77 +38,75 @@ def load_data_from_supabase():
         st.error(f"❌ 讀取失敗: {e}")
         return []
 
-# --- 3. 網頁介面 ---
+# --- 4. 側邊欄導航 ---
+with st.sidebar:
+    st.title("🧩 單字矩陣選單")
+    choice = st.radio("前往頁面：", ["🎯 單字挑戰/複習", "⚙️ 管理矩陣資料庫"])
 
-st.set_page_config(page_title="LexiMatrix 專業版", page_icon="📝")
-st.title("📝 我的全功能雲端單字庫")
+# --- 5. 頁面邏輯分流 ---
 
-# 【A 區塊：進階新增表單】
-with st.expander("➕ 加入新單字 (詳細模式)", expanded=False):
-    with st.form(key="advanced_add_form", clear_on_submit=True):
-        col1, col2 = st.columns([2, 2])
-        
-        with col1:
-            word = st.text_input("英文單字", placeholder="例如: persist")
-            # 詞性複選功能
-            pos_list = st.multiselect("詞性 (可複選)", ["n.", "v.", "adj.", "adv.", "prep.", "conj."])
-            category = st.text_input("類別", placeholder="例如: 考試、托福")
-            
-        with col2:
-            meaning = st.text_area("中文解釋", placeholder="輸入定義...")
-            other_forms = st.text_input("三態/變化", placeholder="例如: persisted, persisting")
-            mastery = st.slider("掌握等級 (0-5)", 0, 5, 1)
+if choice == "🎯 單字挑戰/複習":
+    st.title("🎯 單字挑戰模式")
+    st.info("背單字功能開發中... 目前這裡很乾淨，不會被表格干擾！")
+    # 之後可以在這裡寫測驗題目的程式碼
 
-        submit = st.form_submit_button("🚀 儲存到雲端資料庫")
-
-        if submit:
-            if word and meaning:
-                # 這裡要對齊你的 Supabase 欄位名稱
-                # 如果你的欄位名稱是「中文」，這裡就要改寫成中文
-                payload = {
-                    "word": word,
-                    "pos": ", ".join(pos_list), # 將清單轉為字串 "n., v."
-                    "meaning_zh": meaning,      # 💡 請檢查資料庫是 meaning 還是 meaning_zh
-                    "category": category,
-                    "other_forms": other_forms,
-                    "mastery": mastery,
-                    "user_email": "alice@test.com"
-                }
-                
-                if add_word_to_supabase(payload):
-                    st.success(f"✅ '{word}' 已同步至雲端！")
-                    st.rerun()
-            else:
-                st.warning("⚠️ 單字和解釋是必填項喔！")
-
-# 【B 區塊：顯示清單】
-data = load_data_from_supabase()
-
-if data:
-    st.write(f"📊 目前共有 {len(data)} 個單字")
-    for item in data:
-        # 在顯示清單的地方，請對照這幾個欄位名稱
-        for item in data:
-            word = item.get('word', '未知單字')
-            part_of_speech = item.get('pos', '無詞性') # 對應你的 pos 欄位
-            chinese_meaning = item.get('meaning_zh', '無解釋') # 對應你的 meaning_zh 欄位
+elif choice == "⚙️ 管理矩陣資料庫":
+    st.title("📋 矩陣資料庫總表")
     
-    st.markdown(f"### {word} ({part_of_speech})")
-    st.write(f"💡 解釋：{chinese_meaning}")
-    with st.container():
-            c1, c2, c3 = st.columns([1.5, 3, 1])
-            with c1:
-                st.info(f"**{item.get('word')}**")
-                st.caption(f"({item.get('pos')})")
-            with c2:
-                # 這裡的 key 要對應你資料庫的欄位
-                st.write(f"💡 {item.get('meaning_zh')}") 
-                if item.get('other_forms'):
-                    st.caption(f"變化: {item.get('other_forms')}")
-            with c3:
-                st.write(f"⭐ Lvl: {item.get('mastery')}")
-                st.caption(f"#{item.get('category')}")
-            st.divider()
+    # 【A 區塊：顯示清單】
+    data = load_data_from_supabase()
+    
+    if data:
+        st.write(f"📊 目前共有 {len(data)} 個單字")
+        # 這裡用容器展示，比較漂亮
+        for item in data:
+            with st.container():
+                c1, c2, c3 = st.columns([1.5, 3, 1])
+                with c1:
+                    st.subheader(f"**{item.get('word', '未知')}**")
+                    st.caption(f"({item.get('pos', '無詞性')})")
+                with c2:
+                    st.write(f"💡 {item.get('meaning_zh', '無解釋')}")
+                    if item.get('example'):
+                        st.caption(f"📝 例句: {item.get('example')}")
+                with c3:
+                    st.write(f"⭐ Lvl: {item.get('mastery', 0)}")
+                    st.caption(f"#{item.get('category', '未分類')}")
+                st.divider()
+    else:
+        st.warning("資料庫目前是空的，快去新增單字吧！")
+
+    # 【B 區塊：新增功能】(放在最下面，用摺疊面板收起來)
+    with st.expander("➕ 加入新單字 (詳細模式)"):
+        col1, col2 = st.columns(2)
+        with col1:
+            new_word = st.text_input("英文單字")
+            new_pos = st.multiselect("詞性", ["n.", "v.", "adj.", "adv.", "phr."])
+            new_meaning_en = st.text_input("英文定義 (meaning_en)")
+        with col2:
+            new_meaning_zh = st.text_input("中文解釋 (meaning_zh)")
+            new_category = st.text_input("類別 (category)", value="未分類")
+            new_synonyms = st.text_input("👯 同義詞 (synonyms)")
+            
+        new_example = st.text_area("📝 例句 (example)")
+        
+        if st.button("🚀 儲存至雲端資料庫"):
+            if new_word and new_meaning_zh:
+                new_payload = {
+                    "word": new_word,
+                    "pos": ", ".join(new_pos), # 把清單轉成字串存進去
+                    "meaning_zh": new_meaning_zh,
+                    "meaning_en": new_meaning_en,
+                    "synonyms": new_synonyms,
+                    "example": new_example,
+                    "category": new_category,
+                    "mastery": 0
+                }
+                if add_word_to_supabase(new_payload):
+                    st.success(f"✅ {new_word} 已成功存入！")
+                    st.rerun() # 重新整理網頁看到新資料
+            else:
+                st.error("⚠️ 英文單字與中文解釋為必填欄位！")
 import json
 import pandas as pd
 from datetime import date, timedelta
