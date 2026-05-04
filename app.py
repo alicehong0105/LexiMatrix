@@ -11,9 +11,12 @@ st.set_page_config(page_title="LexiMatrix Pro", page_icon="🛡️", layout="wid
 # --- 2. 狀態初始化 ---
 for key in ['quiz_state', 'show_balloons', 'duplicate_word', 'force_quiz_word']:
     if key not in st.session_state:
-        if key == 'quiz_state': st.session_state[key] = {'word': None, 'q_type': None, 'attempts': 0}
-        else: st.session_state[key] = False
+        if key == 'quiz_state': 
+            st.session_state[key] = {'word': None, 'q_type': None, 'attempts': 0}
+        else: 
+            st.session_state[key] = False
 
+# 氣球特效觸發
 if st.session_state.get('show_balloons'):
     st.balloons()
     st.session_state.show_balloons = False
@@ -36,6 +39,7 @@ def load_data():
 
 # --- 5. 主要導航 ---
 choice = st.sidebar.radio("功能選單", ["📋 管理矩陣", "🎯 訓練模式", "📅 遺忘排程"])
+if st.sidebar.button("♻️ 刷新數據"): st.rerun()
 
 if choice == "📋 管理矩陣":
     st.title("📋 矩陣資料庫管理")
@@ -50,7 +54,7 @@ if choice == "📋 管理矩陣":
             c1, c2 = st.columns(2)
             f_word = c1.text_input("英文單字*")
             f_mean = c2.text_input("中文翻譯*")
-            f_pos = st.multiselect("詞性", ["n.", "v.", "adj.", "adv.", "phr.", "prep.", "conj."])
+            f_pos = st.multiselect("詞性", ["n.", "v.", "adj.", "adv.", "phr.", "prep.", "conj.", "Term."])
             
             c3, c4 = st.columns(2)
             f_forms = c3.text_input("三態/變化 (other_forms)")
@@ -78,10 +82,11 @@ if choice == "📋 管理矩陣":
                             "meaning_en": f_en_def, "example": f_ex, 
                             "mastery": 1, "next_review": get_next_review_date(1)
                         }
-                        # 過濾掉空值，避免資料庫報錯
                         clean_payload = {k: v for k, v in payload.items() if v}
-                        httpx.post(f"{URL}/rest/v1/vocabulary", json=clean_payload, headers=HEADERS)
-                        st.rerun()
+                        resp = httpx.post(f"{URL}/rest/v1/vocabulary", json=clean_payload, headers=HEADERS)
+                        if resp.status_code < 300:
+                            st.session_state.show_balloons = True
+                            st.rerun()
 
     with tab_edit:
         if not df.empty:
@@ -89,11 +94,10 @@ if choice == "📋 管理矩陣":
             row = df[df['word'] == target_word].iloc[0]
             
             with st.form("edit_form"):
-                # 編輯模式的介面現在與新增模式完全一樣
                 ec1, ec2 = st.columns(2)
                 u_word = ec1.text_input("英文單字", value=row.get('word',''))
                 u_mean = ec2.text_input("中文翻譯", value=row.get('meaning_zh',''))
-                u_pos = st.text_input("詞性 (字串格式)", value=row.get('pos',''))
+                u_pos = st.text_input("詞性 (目前: " + str(row.get('pos','')) + ")", value=row.get('pos',''))
                 
                 ec3, ec4 = st.columns(2)
                 u_forms = ec3.text_input("三態/變化", value=row.get('other_forms',''))
@@ -120,47 +124,48 @@ if choice == "📋 管理矩陣":
                     httpx.delete(f"{URL}/rest/v1/vocabulary?id=eq.{row['id']}", headers=HEADERS)
                     st.rerun()
 
-    # --- B. 重複偵測與挑戰 ---
+    # --- B. 重複偵測挑戰 ---
     if st.session_state.duplicate_word:
-        st.warning(f"⚠️ 「{st.session_state.duplicate_word}」已存在！")
-        if st.button("⚔️ 挑戰突擊測驗"):
+        st.warning(f"⚠️ 單字「{st.session_state.duplicate_word}」已在矩陣中！")
+        if st.button("⚔️ 發動突擊測驗挑戰"):
             st.session_state.force_quiz_word = st.session_state.duplicate_word
             st.session_state.duplicate_word = False
             st.rerun()
 
     if st.session_state.force_quiz_word:
-        target = next((w for w in raw_data if w['word'].lower() == st.session_state.force_quiz_word.lower()), None)
-        if target:
-            ans = st.text_input(f"請拼寫出「{target['meaning_zh']}」的英文：")
+        t_quiz = next((w for w in raw_data if w['word'].lower() == st.session_state.force_quiz_word.lower()), None)
+        if t_quiz:
+            ans = st.text_input(f"🔥 突擊挑戰！請拼寫出「{t_quiz['meaning_zh']}」的英文：")
             if st.button("確認提交"):
-                if ans.strip().lower() == target['word'].lower():
+                if ans.strip().lower() == t_quiz['word'].lower():
                     st.session_state.show_balloons = True
+                    st.success("🎊 記憶正確！挑戰成功！")
                     st.session_state.force_quiz_word = False
-                    st.rerun()
+                else: st.error("❌ 拼寫錯誤，請再試一次！")
 
-    # --- C. 搜尋、下載與分區顯示 ---
+    # --- C. 搜尋與分區展示 ---
     if not df.empty:
         st.divider()
-        search_q = st.text_input("🔍 搜尋關鍵字")
+        search_q = st.text_input("🔍 搜尋關鍵字 (單字/中文/類別)")
         if search_q:
             df = df[df.apply(lambda r: search_q.lower() in str(r.values).lower(), axis=1)]
         
-        c_left, c_right = st.columns([3, 1])
-        v_mode = c_left.radio("顯示模式", ["分區檢視", "完整名單"], horizontal=True)
+        c_l, c_r = st.columns([3, 1])
+        v_mode = c_l.radio("顯示模式", ["分區檢視 (L0-5)", "完整清單"], horizontal=True)
         csv = df.to_csv(index=False).encode('utf-8-sig')
-        c_right.download_button("📥 下載 CSV 備份", csv, f"lexi_{date.today()}.csv")
+        c_r.download_button("📥 下載 CSV 備份", csv, f"lexi_{date.today()}.csv")
 
-        show_cols = ['word', 'meaning_zh', 'pos', 'category', 'mastery']
-        if v_mode == "分區檢視":
-            t1, t2, t3 = st.tabs(["🌱 L0-1 (新單字)", "🏃 L2-3 (複習中)", "👑 L4-5 (已精通)"])
-            t1.dataframe(df[df['mastery'] <= 1][show_cols], use_container_width=True)
-            t2.dataframe(df[(df['mastery'] >= 2) & (df['mastery'] <= 3)][show_cols], use_container_width=True)
-            t3.dataframe(df[df['mastery'] >= 4][show_cols], use_container_width=True)
+        cols = ['word', 'meaning_zh', 'pos', 'category', 'mastery']
+        if v_mode == "分區檢視 (L0-5)":
+            t1, t2, t3 = st.tabs(["🌱 L0-1 (新錄入)", "🏃 L2-3 (強化中)", "👑 L4-5 (已精通)"])
+            t1.dataframe(df[df['mastery'] <= 1][cols], use_container_width=True)
+            t2.dataframe(df[(df['mastery'] >= 2) & (df['mastery'] <= 3)][cols], use_container_width=True)
+            t3.dataframe(df[df['mastery'] >= 4][cols], use_container_width=True)
         else:
-            st.dataframe(df[show_cols], use_container_width=True)
+            st.dataframe(df[cols], use_container_width=True)
 
 elif choice == "🎯 訓練模式":
-    st.title("🎯 深度複習訓練")
+    st.title("🎯 深度訓練模式")
     raw_data = load_data()
     today = str(date.today())
     
@@ -170,25 +175,25 @@ elif choice == "🎯 訓練模式":
             q = random.choice(due)
             st.session_state.quiz_state.update({'word': q['word'], 'attempts': 0})
             opts = ["中文提示"]
-            if q.get('example'): opts.append("例句填空")
-            if q.get('meaning_en'): opts.append("英文定義")
+            if q.get('example') and q['word'].lower() in q.get('example','').lower(): opts.append("例句填空")
+            if q.get('meaning_en'): opts.append("英文定義題")
             st.session_state.quiz_state['q_type'] = random.choice(opts)
         else:
-            st.success("🎉 矩陣所有單字目前都已記牢，今日複習完成！")
+            st.success("🎉 今日複習任務已全數完成！")
             st.stop()
 
     target = next((w for w in raw_data if w['word'] == st.session_state.quiz_state['word']), None)
     if target:
-        st.subheader(f"題型：{st.session_state.quiz_state['q_type']}")
+        st.subheader(f"Level {target['mastery']} | 題型：{st.session_state.quiz_state['q_type']}")
         if st.session_state.quiz_state['q_type'] == "例句填空":
             st.info(f"📝 {re.sub(re.escape(target['word']), '_______', target['example'], flags=re.I)}")
-        elif st.session_state.quiz_state['q_type'] == "英文定義":
+        elif st.session_state.quiz_state['q_type'] == "英文定義題":
             st.info(f"📖 {target['meaning_en']}")
         else:
             st.info(f"💡 中文：{target['meaning_zh']}")
 
-        ans = st.text_input("輸入拼寫：")
-        if st.button("提交"):
+        ans = st.text_input("輸入英文單字：", key="quiz_input")
+        if st.button("提交答案"):
             if ans.strip().lower() == target['word'].lower():
                 st.session_state.show_balloons = True
                 new_m = min(5, target.get('mastery', 1) + 1)
@@ -196,12 +201,36 @@ elif choice == "🎯 訓練模式":
                             json={"mastery": new_m, "next_review": get_next_review_date(new_m)}, headers=HEADERS)
                 st.session_state.quiz_state['word'] = None
                 st.rerun()
-            else: st.error("不對喔，再想一下！")
+            else:
+                st.session_state.quiz_state['attempts'] += 1
+                if st.session_state.quiz_state['attempts'] >= 3:
+                    st.error(f"💀 失敗！答案是：{target['word']}")
+                    httpx.patch(f"{URL}/rest/v1/vocabulary?id=eq.{target['id']}", 
+                                json={"mastery": 0, "next_review": today}, headers=HEADERS)
+                    st.session_state.quiz_state['word'] = None
+                else: st.warning("拼寫錯誤，再試一次！")
 
 elif choice == "📅 遺忘排程":
-    st.title("📅 遺忘曲線排程")
+    st.title("📅 遺忘排程與可視化")
     raw_data = load_data()
     if raw_data:
         df = pd.DataFrame(raw_data)
         df['nr_date'] = pd.to_datetime(df['next_review']).dt.date
+        today = date.today()
+        
+        # 統計區
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("📊 熟練度分佈")
+            st.bar_chart(df['mastery'].value_counts().sort_index())
+        with c2:
+            st.subheader("📈 矩陣進度")
+            due_count = len(df[df['nr_date'] <= today])
+            safe_count = len(df[df['nr_date'] > today])
+            st.metric("今日待複習", due_count, delta=f"-{due_count}", delta_color="inverse")
+            progress = (safe_count / len(df)) if len(df) > 0 else 0
+            st.progress(progress, text=f"矩陣穩固度: {int(progress*100)}%")
+
+        st.divider()
+        st.subheader("🗓️ 詳細複習排程")
         st.dataframe(df[['word', 'meaning_zh', 'mastery', 'nr_date']].sort_values('nr_date'), use_container_width=True)
