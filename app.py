@@ -2,7 +2,7 @@ import streamlit as st
 import httpx
 
 # --- 1. 網頁基本設定 (全域唯一) ---
-st.set_page_config(page_title="LexiMatrix Pro", page_icon="🧩", layout="wide")
+st.set_page_config(page_title="LexiMatrix Pro", page_icon="🛡️", layout="wide")
 
 # --- 2. 從 Secrets 讀取連線資訊 ---
 URL = st.secrets["connections"]["supabase"]["url"]
@@ -14,8 +14,7 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# --- 3. 功能函式 ---
-
+# --- 3. 功能函式庫 ---
 def load_data_from_supabase():
     api_url = f"{URL}/rest/v1/vocabulary?select=*&order=id.desc"
     try:
@@ -36,24 +35,23 @@ def add_word_to_supabase(word_data):
         st.error(f"❌ 儲存失敗: {e}")
         return False
 
-# --- 4. 側邊欄導航 (定義所有頁面) ---
+# --- 4. 側邊欄導航 (這是唯一的控制塔) ---
 with st.sidebar:
-    st.title("🧩 LexiMatrix 導航")
+    st.title("🛡️ LexiMatrix 導航")
     choice = st.radio(
         "切換功能：", 
         ["📋 管理矩陣", "🎯 訓練模式", "📅 遺忘排程"]
     )
     st.divider()
-    st.caption("版本：v1.3 | 已連線至 Supabase")
+    st.caption("版本：v1.4 | 已連線至雲端矩陣")
 
-# --- 5. 頁面邏輯分流 (這是確保功能不重複的關鍵) ---
+# --- 5. 頁面邏輯分流 (保證頁面完全獨立) ---
 
 if choice == "📋 管理矩陣":
     st.title("📋 矩陣資料庫總表")
     
-    # 讀取並顯示資料
+    # 【功能 1：資料呈現】
     data = load_data_from_supabase()
-    
     if data:
         st.write(f"📊 目前共有 {len(data)} 個單字")
         for item in data:
@@ -71,21 +69,21 @@ if choice == "📋 管理矩陣":
                     st.caption(f"#{item.get('category')}")
                 st.divider()
     
-    # 【唯一的】新增功能，放在管理頁面底部，且預設收合
+    # 【功能 2：新增單字】(這區現在只會出現在管理頁面，且縮在加號裡)
     with st.expander("➕ 新增單字至矩陣"):
         col1, col2 = st.columns(2)
         with col1:
-            new_word = st.text_input("英文單字")
-            new_pos = st.multiselect("詞性", ["n.", "v.", "adj.", "adv.", "phr."])
-            new_meaning_en = st.text_input("英文定義")
+            new_word = st.text_input("英文單字*", key="add_word")
+            new_pos = st.multiselect("詞性", ["n.", "v.", "adj.", "adv.", "phr."], key="add_pos")
+            new_meaning_en = st.text_input("英文定義", key="add_en")
         with col2:
-            new_meaning_zh = st.text_input("中文解釋")
-            new_category = st.text_input("類別", value="未分類")
-            new_synonyms = st.text_input("👯 同義詞")
+            new_meaning_zh = st.text_input("中文解釋*", key="add_zh")
+            new_category = st.text_input("類別", value="未分類", key="add_cat")
+            new_synonyms = st.text_input("👯 同義詞", key="add_syn")
         
-        new_example = st.text_area("📝 例句內容")
+        new_example = st.text_area("📝 例句內容", key="add_ex")
         
-        if st.button("🚀 確認儲存"):
+        if st.button("🚀 確認儲存至雲端"):
             if new_word and new_meaning_zh:
                 payload = {
                     "word": new_word,
@@ -98,23 +96,22 @@ if choice == "📋 管理矩陣":
                     "mastery": 0
                 }
                 if add_word_to_supabase(payload):
-                    st.success(f"✅ {new_word} 已成功存入！")
+                    st.success(f"✅ {new_word} 已成功入庫！")
                     st.rerun()
             else:
-                st.warning("⚠️ 英文與中文解釋為必填！")
+                st.warning("⚠️ 星號(*)處為必填項目！")
 
 elif choice == "🎯 訓練模式":
     st.title("🎯 單字訓練模式")
-    st.info("這裡是專屬訓練空間，頁面非常乾淨。")
-    # 這裡絕對不會出現管理頁面的表格或新增按鈕
-    st.write("🏃 準備好開始練習了嗎？")
+    st.info("💡 進入沉浸式練習。這裡已移除所有管理工具與重複標籤。")
+    # 這裡放你的挑戰/測驗邏輯
+    st.write("🏃 測驗內容準備中...")
 
 elif choice == "📅 遺忘排程":
     st.title("📅 遺忘排程")
-    st.write("複習清單載入中...")
+    st.write("📊 根據艾賓浩斯曲線計算的複習清單...")
 
-# --- 這裡之後不可以再寫任何 st.text_input 或 st.button ---
-# --- 否則它們會出現在每一個頁面的底部 ---
+# --- 注意：此處之後絕對不要寫任何代碼，否則會出現在所有頁面的底部 ---
 import json
 import pandas as pd
 from datetime import date, timedelta
