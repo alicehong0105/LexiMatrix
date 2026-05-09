@@ -54,7 +54,35 @@ if st.sidebar.button("🔄 Force Sync Matrix"):
 if "Matrix Core" in choice:
     st.markdown("<div class='main-title'>Matrix Core</div>", unsafe_allow_html=True)
     t_add, t_view, t_edit = st.tabs(["➕ Initialize Node", "🔍 View Matrix", "📝 Modify Protocol"])
-
+# [A] 新增模式
+    with t_add:
+        with st.form("add_matrix_form", clear_on_submit=True):
+        # ... 你的輸入欄位 ...
+            f_word = st.text_input("Entry (單字)*")
+            f_mean = st.text_input("Definition (中文)*")
+        # ... 其他欄位 ...
+        
+        if st.form_submit_button("🚀 SYNC TO CORE"):
+            if f_word.strip() and f_mean.strip():
+                payload = {
+                    "word": f_word.strip(),
+                    "meaning_zh": f_mean.strip(),
+                    "pos": f_pos if f_pos else [], 
+                    "mastery": 1,
+                    "next_review": get_ebbinghaus_date(1)
+                    # ... 其他欄位 ...
+                }
+                
+                # 發送請求
+                resp = httpx.post(f"{URL}/rest/v1/vocabulary", json=payload, headers=HEADERS)
+                
+                if resp.status_code < 300:
+                    st.success("🎉 新增成功！正在更新矩陣...")
+                    
+                    # --- 關鍵：強制重新執行 ---
+                    st.rerun() 
+                else:
+                    st.error(f"同步失敗：{resp.text}")
     # --- [A] 新增模式 (完整欄位) ---
     with t_add:
         with st.form("add_matrix_form", clear_on_submit=True):
