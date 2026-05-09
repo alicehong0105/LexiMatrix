@@ -83,42 +83,6 @@ if "Matrix Core" in choice:
                     st.rerun() 
                 else:
                     st.error(f"同步失敗：{resp.text}")
-    # --- [A] 新增模式 (完整欄位) ---
-    with t_add:
-        with st.form("add_matrix_form", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            f_word = c1.text_input("Entry (單字)*")
-            f_mean = c2.text_input("Definition (中文)*")
-            
-            st.write("---")
-            st.caption("Morphology (動詞三態變化)")
-            v1, v2, v3 = st.columns(3)
-            f_v1 = v1.text_input("V1 (Base)")
-            f_v2 = v2.text_input("V2 (Past)")
-            f_v3 = v3.text_input("V3 (Participle)")
-            
-            st.write("---")
-            f_pos = st.multiselect("Class (詞性)", ["n.", "v.", "adj.", "adv.", "phr.", "prep."])
-            
-            c3, c4 = st.columns(2)
-            f_syn = c3.text_input("Synonyms (同義詞)")
-            f_coll = c4.text_input("Collocations (慣用搭配)")
-            
-            f_en = st.text_area("English Definition (英文定義)")
-            f_ex = st.text_area("Context Example (例句)")
-            
-            if st.form_submit_button("🚀 SYNC TO CORE"):
-                if f_word.strip() and f_mean.strip():
-                    payload = {
-                        "word": f_word.strip(), "meaning_zh": f_mean.strip(), 
-                        "pos": f_pos if f_pos else [], # 解決 22P02 關鍵：傳空陣列
-                        "other_forms": f"{f_v1} / {f_v2} / {f_v3}" if f_v1 else "",
-                        "synonyms": f_syn, "collocations": f_coll, "meaning_en": f_en, "example": f_ex,
-                        "mastery": 1, "next_review": get_ebbinghaus_date(1)
-                    }
-                    httpx.post(f"{URL}/rest/v1/vocabulary", json=payload, headers=HEADERS)
-                    st.rerun()
-
     # --- [B] 分區檢視 (具備篩選邏輯) ---
     with t_view:
         if not df.empty:
