@@ -1,0 +1,15 @@
+{
+  "name": "LexiMatrix Pro",
+  "short_name": "LexiMatrix",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2436/2436630.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
