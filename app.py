@@ -5,35 +5,61 @@ from datetime import date, timedelta
 import random
 import re
 
-# --- 1. 頁面設定 ---
-st.set_page_config(page_title="LexiMatrix Pro", page_icon="🛡️", layout="wide")
+# --- 1. 頁面配置與 PWA 介面優化 (Mobile First Design) ---
+st.set_page_config(page_title="Qurate Pro", page_icon="⚡", layout="wide")
 
-# --- 2. 狀態初始化 ---
+st.markdown("""
+    <style>
+        /* 隱藏裝飾線與頁尾 */
+        [data-testid="stHeader"] { visibility: hidden; }
+        footer { visibility: hidden; }
+        
+        /* 品牌字體與漸層標題 */
+        .main-title {
+            background: linear-gradient(90deg, #007bff, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800; font-size: 2.8rem; margin-bottom: 0.5rem;
+        }
+
+        /* 按鈕高級感設計 */
+        .stButton > button {
+            width: 100%; border-radius: 12px; height: 3.5rem;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white; font-weight: bold; border: none; transition: 0.3s;
+        }
+        .stButton > button:hover { transform: scale(1.02); box-shadow: 0 10px 20px rgba(110, 142, 251, 0.3); }
+
+        /* 手機適配：防止 iOS 自動縮放 */
+        input { font-size: 16px !important; }
+        
+        /* 數據看板卡片化 */
+        div[data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.2rem; border-radius: 20px; backdrop-filter: blur(5px);
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- 2. 系統狀態初始化 ---
 for key in ['quiz_state', 'show_balloons', 'duplicate_word', 'force_quiz_word']:
     if key not in st.session_state:
-        if key == 'quiz_state': 
-            st.session_state[key] = {'word': None, 'q_type': None, 'attempts': 0}
-        else: 
-            st.session_state[key] = False
+        if key == 'quiz_state': st.session_state[key] = {'word': None}
+        else: st.session_state[key] = False
 
-# 氣球特效觸發
 if st.session_state.show_balloons:
     st.balloons()
     st.session_state.show_balloons = False
 
-# --- 3. Supabase 配置 ---
+# --- 3. 核心 API 與艾賓浩斯演算法 ---
 URL = st.secrets["connections"]["supabase"]["url"]
 KEY = st.secrets["connections"]["supabase"]["key"]
 HEADERS = {"apikey": KEY, "Authorization": f"Bearer {KEY}", "Content-Type": "application/json"}
 
-# --- 4. 核心：艾賓浩斯遺忘曲線演算法 ---
-def get_next_review_date(mastery_level):
-    """
-    等級提升對應的複習天數：
-    L1->L2: +1天 | L2->L3: +3天 | L3->L4: +7天 | L4->L5: +14天 | L5+: +30天
-    """
+def get_next_review_date(mastery):
+    # 艾賓浩斯階段：1, 3, 7, 14, 30 天
     curve = {0: 0, 1: 1, 2: 3, 3: 7, 4: 14, 5: 30}
-    days = curve.get(mastery_level, 1)
+    days = curve.get(mastery, 1)
     return str(date.today() + timedelta(days=days))
 
 def load_data():
@@ -42,203 +68,140 @@ def load_data():
         return resp.json()
     except: return []
 
-# --- 5. 主要功能導航 ---
-choice = st.sidebar.radio("功能選單", ["📋 管理矩陣", "🎯 訓練模式", "📅 遺忘排程"])
+# --- 4. 側邊欄導航 ---
+st.sidebar.markdown("<h1 style='color: #007bff;'>⚡ Qurate Pro</h1>", unsafe_allow_html=True)
+choice = st.sidebar.radio("SYSTEM ACCESS", ["📋 Matrix Core", "🎯 Flash Pulse", "📅 Ebbing Log"])
+st.sidebar.divider()
+st.sidebar.caption("v1.0 Final | PWA Enabled")
 
-if choice == "📋 管理矩陣":
-    st.title("📋 矩陣資料庫管理")
+# --- 5. 功能模組 ---
+
+# 模組 A: Matrix Core (管理與錄入)
+if choice == "📋 Matrix Core":
+    st.markdown("<h1 class='main-title'>📋 Matrix Core</h1>", unsafe_allow_html=True)
     raw_data = load_data()
     df = pd.DataFrame(raw_data) if raw_data else pd.DataFrame()
 
-    tab_add, tab_edit = st.tabs(["➕ 新增單字", "📝 編輯 / 刪除單字"])
+    # 雙欄與分頁顯示整合
+    t_add, t_edit, t_view = st.tabs(["➕ Initialize Node", "📝 Modify Protocol", "🔍 View Matrix"])
 
-    with tab_add:
+    with t_add:
         with st.form("add_form", clear_on_submit=True):
+            # 雙欄錄入模式
             c1, c2 = st.columns(2)
-            f_word = c1.text_input("英文單字*")
-            f_mean = c2.text_input("中文翻譯*")
-            f_pos = st.multiselect("詞性", ["n.", "v.", "adj.", "adv.", "phr.", "prep.", "conj.", "Term."])
+            f_word = c1.text_input("Entry (單字)*")
+            f_mean = c2.text_input("Definition (中文)*")
+            f_pos = st.multiselect("Class (詞性)", ["n.", "v.", "adj.", "adv.", "phr."])
+            f_cat = st.text_input("Category", value="General")
+            f_ex = st.text_area("Context Sentence (例句)")
             
-            c3, c4 = st.columns(2)
-            f_forms = c3.text_input("三態/變化 (other_forms)")
-            f_cat = c4.text_input("類別", value="未分類")
-            
-            c5, c6 = st.columns(2)
-            f_coll = c5.text_input("慣用搭配 (collocations)")
-            f_syn = c6.text_input("同義詞 (synonyms)")
-            
-            f_en_def = st.text_area("英文定義 (meaning_en)")
-            f_ex = st.text_area("例句 (example)")
-            
-            if st.form_submit_button("🚀 錄入矩陣"):
+            if st.form_submit_button("🚀 SYNC TO CORE"):
                 if f_word.strip() and f_mean.strip():
+                    # 重複偵測系統
                     dup = next((w for w in raw_data if w['word'].lower() == f_word.strip().lower()), None)
                     if dup:
                         st.session_state.duplicate_word = f_word.strip()
                         st.rerun()
                     else:
                         payload = {
-                            "word": f_word.strip(), "meaning_zh": f_mean.strip(), 
-                            "pos": ", ".join(f_pos) if f_pos else None, "category": f_cat,
-                            "other_forms": f_forms, "collocations": f_coll, "synonyms": f_syn,
-                            "meaning_en": f_en_def, "example": f_ex, 
-                            "mastery": 1, "next_review": get_next_review_date(1)
+                            "word": f_word.strip(), "meaning_zh": f_mean.strip(), "pos": ", ".join(f_pos),
+                            "category": f_cat, "example": f_ex, "mastery": 1, 
+                            "next_review": get_next_review_date(1)
                         }
-                        clean_payload = {k: v for k, v in payload.items() if v}
-                        httpx.post(f"{URL}/rest/v1/vocabulary", json=clean_payload, headers=HEADERS)
+                        httpx.post(f"{URL}/rest/v1/vocabulary", json={k:v for k,v in payload.items() if v}, headers=HEADERS)
                         st.session_state.show_balloons = True
                         st.rerun()
 
-    with tab_edit:
+    with t_edit:
         if not df.empty:
-            target_word = st.selectbox("🎯 選擇要修改的單字", options=df['word'].tolist())
-            row = df[df['word'] == target_word].iloc[0]
+            target = st.selectbox("Select Node to Modify", options=df['word'].tolist())
+            row = df[df['word'] == target].iloc[0]
+            # 劍橋一鍵發音
+            st.link_button(f"🔊 Audio: {target}", f"https://dictionary.cambridge.org/dictionary/english-chinese-traditional/{target.replace(' ', '-')}")
             
-            # --- 劍橋發音連結 ---
-            cam_url = f"https://dictionary.cambridge.org/dictionary/english-chinese-traditional/{row['word'].replace(' ', '-')}"
-            st.link_button(f"🔊 聽「{row['word']}」真人發音 (Cambridge)", cam_url)
-
             with st.form("edit_form"):
-                # 與新增模式一致的雙欄佈局
                 ec1, ec2 = st.columns(2)
-                u_word = ec1.text_input("英文單字", value=row.get('word',''))
-                u_mean = ec2.text_input("中文翻譯", value=row.get('meaning_zh',''))
-                u_pos = st.text_input("詞性 (目前: " + str(row.get('pos','')) + ")", value=row.get('pos',''))
-                
-                ec3, ec4 = st.columns(2)
-                u_forms = ec3.text_input("三態/變化", value=row.get('other_forms',''))
-                u_cat = ec4.text_input("類別", value=row.get('category',''))
-                
-                ec5, ec6 = st.columns(2)
-                u_coll = ec5.text_input("慣用搭配", value=row.get('collocations',''))
-                u_syn = ec6.text_input("同義詞", value=row.get('synonyms',''))
-                
-                u_en_def = st.text_area("英文定義", value=row.get('meaning_en',''))
-                u_ex = st.text_area("例句", value=row.get('example',''))
-                
+                u_word = ec1.text_input("Entry", value=row.get('word',''))
+                u_mean = ec2.text_input("Definition", value=row.get('meaning_zh',''))
+                u_ex = st.text_area("Context", value=row.get('example',''))
                 b_save, b_del, _ = st.columns([1, 1, 4])
-                if b_save.form_submit_button("💾 儲存修改"):
-                    upd = {"word": u_word, "meaning_zh": u_mean, "pos": u_pos, "category": u_cat, 
-                           "other_forms": u_forms, "collocations": u_coll, "synonyms": u_syn, 
-                           "meaning_en": u_en_def, "example": u_ex}
+                if b_save.form_submit_button("UPDATE"):
+                    upd = {"word": u_word, "meaning_zh": u_mean, "example": u_ex}
                     httpx.patch(f"{URL}/rest/v1/vocabulary?id=eq.{row['id']}", json=upd, headers=HEADERS)
                     st.rerun()
-                if b_del.form_submit_button("🗑️ 刪除單字"):
+                if b_del.form_submit_button("PURGE"):
                     httpx.delete(f"{URL}/rest/v1/vocabulary?id=eq.{row['id']}", headers=HEADERS)
                     st.rerun()
 
-    # --- 重複偵測與突擊測驗 ---
+    with t_view:
+        if not df.empty:
+            # 部份顯示與搜尋功能
+            view_f = st.radio("Display Protocol", ["All Nodes", "Due Today", "Mastered (L5)"], horizontal=True)
+            search_q = st.text_input("🔍 Neural Search...")
+            d_df = df.copy()
+            if view_f == "Due Today": d_df = d_df[pd.to_datetime(d_df['next_review']).dt.date <= date.today()]
+            elif view_f == "Mastered (L5)": d_df = d_df[d_df['mastery'] >= 5]
+            if search_q: d_df = d_df[d_df['word'].str.contains(search_q, case=False)]
+            st.dataframe(d_df[['word', 'meaning_zh', 'mastery', 'next_review']], use_container_width=True)
+
+    # 重複單字突擊挑戰
     if st.session_state.duplicate_word:
-        st.warning(f"⚠️ 單字「{st.session_state.duplicate_word}」已存在！")
-        if st.button("⚔️ 挑戰突擊測驗"):
+        st.error(f"Collision: '{st.session_state.duplicate_word}' exists. Memory Check required.")
+        if st.button("⚔️ Start Force Challenge"):
             st.session_state.force_quiz_word = st.session_state.duplicate_word
             st.session_state.duplicate_word = False
             st.rerun()
 
     if st.session_state.force_quiz_word:
-        t_quiz = next((w for w in raw_data if w['word'].lower() == st.session_state.force_quiz_word.lower()), None)
-        if t_quiz:
-            ans = st.text_input(f"🔥 記憶挑戰！請拼寫出「{t_quiz['meaning_zh']}」的英文：")
-            if st.button("確認提交挑戰"):
-                if ans.strip().lower() == t_quiz['word'].lower():
-                    st.session_state.show_balloons = True
-                    st.session_state.force_quiz_word = False
-                    st.rerun()
-                else: st.error("拼寫有誤，再想一下！")
+        q_ans = st.text_input(f"Verify Entry '{st.session_state.force_quiz_word}':")
+        if st.button("CONFIRM"):
+            if q_ans.lower() == st.session_state.force_quiz_word.lower():
+                st.session_state.show_balloons = True
+                st.session_state.force_quiz_word = False
+                st.rerun()
 
-    # --- 搜尋與分區顯示 ---
-    if not df.empty:
-        st.divider()
-        search_q = st.text_input("🔍 搜尋關鍵字 (單字/翻譯/類別)")
-        if search_q:
-            df = df[df.apply(lambda r: search_q.lower() in str(r.values).lower(), axis=1)]
-        
-        c_l, c_r = st.columns([3, 1])
-        v_mode = c_l.radio("顯示模式", ["分區檢視", "完整清單"], horizontal=True)
-        csv = df.to_csv(index=False).encode('utf-8-sig')
-        c_r.download_button("📥 下載 CSV", csv, f"lexi_{date.today()}.csv")
-
-        cols = ['word', 'meaning_zh', 'pos', 'category', 'mastery']
-        if v_mode == "分區檢視":
-            t1, t2, t3 = st.tabs(["🌱 L0-1", "🏃 L2-3", "👑 L4-5"])
-            t1.dataframe(df[df['mastery'] <= 1][cols], use_container_width=True)
-            t2.dataframe(df[(df['mastery'] >= 2) & (df['mastery'] <= 3)][cols], use_container_width=True)
-            t3.dataframe(df[df['mastery'] >= 4][cols], use_container_width=True)
-        else:
-            st.dataframe(df[cols], use_container_width=True)
-
-elif choice == "🎯 訓練模式":
-    st.title("🎯 遺忘曲線複習訓練")
+# 模組 B: Flash Pulse (閃擊訓練)
+elif choice == "🎯 Flash Pulse":
+    st.markdown("<h1 class='main-title'>🎯 Flash Pulse</h1>", unsafe_allow_html=True)
     raw_data = load_data()
-    today = str(date.today())
-    # 嚴格篩選今日待複習單字
-    due_list = [w for w in raw_data if str(w.get('next_review'))[:10] <= today]
-    
+    due = [w for w in raw_data if str(w.get('next_review'))[:10] <= str(date.today())]
+
     if not st.session_state.quiz_state['word']:
-        if due_list:
-            q = random.choice(due_list)
-            st.session_state.quiz_state.update({'word': q['word'], 'attempts': 0})
-            opts = ["中文提示"]
-            if q.get('example'): opts.append("例句填空")
-            if q.get('meaning_en'): opts.append("英文定義")
-            st.session_state.quiz_state['q_type'] = random.choice(opts)
-        else:
-            st.success("🎉 太棒了！今日複習任務已全數完成。")
-            st.stop()
+        if due: st.session_state.quiz_state['word'] = random.choice(due)['word']
+        else: st.success("✨ Neural Matrix Stable. No tasks."); st.stop()
 
-    target = next((w for w in due_list if w['word'] == st.session_state.quiz_state['word']), None)
+    target = next((w for w in due if w['word'] == st.session_state.quiz_state['word']), None)
     if target:
-        st.subheader(f"題型：{st.session_state.quiz_state['q_type']}")
-        if st.session_state.quiz_state['q_type'] == "例句填空":
-            st.info(f"📝 {re.sub(re.escape(target['word']), '_______', target['example'], flags=re.I)}")
-        elif st.session_state.quiz_state['q_type'] == "英文定義":
-            st.info(f"📖 {target['meaning_en']}")
-        else:
-            st.info(f"💡 中文：{target['meaning_zh']}")
-            
-        # 輔助連結
-        cam_url = f"https://dictionary.cambridge.org/dictionary/english-chinese-traditional/{target['word'].replace(' ', '-')}"
-        st.markdown(f"[🔊 聽發音提示]({cam_url})")
-
-        ans = st.text_input("輸入正確拼寫：")
-        if st.button("提交答案"):
+        st.info(f"💡 Neural Cue: {target['meaning_zh']}")
+        # 訓練模式聯動發音
+        st.markdown(f"[🔊 Listen Hint](https://dictionary.cambridge.org/dictionary/english-chinese-traditional/{target['word'].replace(' ', '-')})")
+        ans = st.text_input("Entry Input:")
+        if st.button("EXECUTE"):
             if ans.strip().lower() == target['word'].lower():
                 st.session_state.show_balloons = True
-                new_m = min(5, target.get('mastery', 1) + 1)
+                new_m = min(5, target['mastery'] + 1)
                 httpx.patch(f"{URL}/rest/v1/vocabulary?id=eq.{target['id']}", 
                             json={"mastery": new_m, "next_review": get_next_review_date(new_m)}, headers=HEADERS)
                 st.session_state.quiz_state['word'] = None
                 st.rerun()
-            else: st.error("拼寫錯誤，再試一次！")
+            else: st.error("Sync Failed. Retry.")
 
-elif choice == "📅 遺忘排程":
-    st.title("📅 艾賓浩斯遺忘排程看板")
+# 模組 C: Ebbing Log (數據與線型預估)
+elif choice == "📅 Ebbing Log":
+    st.markdown("<h1 class='main-title'>📅 Ebbing Log</h1>", unsafe_allow_html=True)
     raw_data = load_data()
     if raw_data:
         df = pd.DataFrame(raw_data)
-        df['nr_date'] = pd.to_datetime(df['next_review']).dt.date
-        today = date.today()
+        df['date'] = pd.to_datetime(df['next_review']).dt.date
         
-        # 1. 數據統計看板
+        # 線型預估圖表 (未來 7 天複習負載)
+        st.subheader("📈 Retention Projection (未來 7 天複習壓力預估)")
+        f_dates = [date.today() + timedelta(days=i) for i in range(8)]
+        f_counts = [len(df[df['date'] <= d]) for d in f_dates]
+        chart_data = pd.DataFrame({"Date": f_dates, "Cumulative Nodes": f_counts}).set_index("Date")
+        st.area_chart(chart_data)
+        
         c1, c2, c3 = st.columns(3)
-        due_df = df[df['nr_date'] <= today]
-        future_df = df[df['nr_date'] > today]
-        c1.metric("🔥 今日待複習", len(due_df))
-        c2.metric("✅ 記憶穩固中", len(future_df))
-        progress = (len(future_df) / len(df)) if len(df) > 0 else 0
-        c3.progress(progress, text=f"矩陣穩固度: {int(progress*100)}%")
-
-        # 2. 熟練度視覺化
-        st.subheader("📊 熟練度等級分佈")
-        st.bar_chart(df['mastery'].value_counts().sort_index())
-
-        # 3. 核心功能：複習排程清單
-        st.divider()
-        st.subheader("🚩 今日複習任務 (Today's Targets)")
-        if not due_df.empty:
-            st.dataframe(due_df[['word', 'meaning_zh', 'mastery', 'nr_date']].sort_values('nr_date'), use_container_width=True)
-        else:
-            st.success("目前沒有待辦任務。")
-
-        st.subheader("📅 未來複習預告 (Upcoming)")
-        st.dataframe(future_df[['nr_date', 'word', 'meaning_zh', 'mastery']].sort_values('nr_date'), use_container_width=True)
+        c1.metric("Due Today", len(df[df['date'] <= date.today()]))
+        c2.metric("Neural Nodes", len(df))
+        c3.metric("Mastery (L5)", len(df[df['mastery'] == 5]))
