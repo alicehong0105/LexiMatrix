@@ -84,10 +84,10 @@ if "Matrix Core" in choice:
                 else:
                     st.error(f"同步失敗：{resp.text}")
     # --- [B] 分區檢視 (具備篩選邏輯) ---
-    with t_view:
-        if not df.empty:
-            v_f = st.radio("Group Filter", ["Due Today", "All Nodes", "L5 Mastered"], horizontal=True)
-            d_df = df.copy()
+        with t_view:
+            if not df.empty:
+                v_f = st.radio("Group Filter", ["Due Today", "All Nodes", "L5 Mastered"], horizontal=True)
+                d_df = df.copy()
             if v_f == "Due Today":
                 d_df = d_df[pd.to_datetime(d_df['next_review']).dt.date <= date.today()]
             elif v_f == "L5 Mastered":
@@ -97,12 +97,12 @@ if "Matrix Core" in choice:
                 d_df[['word', 'meaning_zh', 'pos', 'mastery', 'next_review', 'other_forms']], 
                 use_container_width=True, hide_index=True
             )
-        else:
-            st.info("Matrix is currently empty.")
+else:
+                st.info("Matrix is currently empty.")
 
     # --- [C] 修改模式 (完全對等新增模式的欄位) ---
-    with t_edit:
-        if not df.empty:
+with t_edit:
+    if not df.empty:
             target_word = st.selectbox("Select Target Node", options=df['word'].tolist())
             row = df[df['word'] == target_word].iloc[0]
             
