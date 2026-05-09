@@ -5,7 +5,7 @@ from datetime import date, timedelta, datetime
 import random
 import plotly.graph_objects as go
 
-# --- 1. UI 與視覺配置 ---
+# --- 1. 核心視覺配置 ---
 st.set_page_config(page_title="Qurate Pro", page_icon="⚡", layout="wide")
 
 st.markdown("""
@@ -14,19 +14,22 @@ st.markdown("""
         .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; }
         footer { visibility: hidden; }
         .main-title { color: #2d3436; font-weight: 800; font-size: 2.2rem; margin-bottom: 1rem; }
-        .stButton > button { width: 100%; border-radius: 12px; height: 3rem; background: #2d3436; color: white; font-weight: bold; border: none; }
+        .stButton > button { width: 100%; border-radius: 12px; height: 3.2rem; background: #2d3436; color: white; font-weight: bold; border: none; }
         .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+        .stTabs [aria-selected="true"] { background-color: #2d3436 !important; color: white !important; border-radius: 8px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. 核心 API 與 艾賓浩斯演算法 ---
+# --- 2. API 與 艾賓浩斯演算法 ---
 URL = st.secrets["connections"]["supabase"]["url"]
 KEY = st.secrets["connections"]["supabase"]["key"]
 HEADERS = {"apikey": KEY, "Authorization": f"Bearer {KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
 
 def get_ebbinghaus_date(mastery):
+    # 艾賓浩斯階段：0(當天), 1(1天), 2(3天), 3(7天), 4(14天), 5(30天)
     curve = {0: 0, 1: 1, 2: 3, 3: 7, 4: 14, 5: 30}
-    return (date.today() + timedelta(days=curve.get(mastery, 1))).strftime('%Y-%m-%d')
+    days = curve.get(mastery, 1)
+    return (date.today() + timedelta(days=days)).strftime('%Y-%m-%d')
 
 def load_data():
     try:
@@ -44,32 +47,41 @@ st.sidebar.markdown("<h2 style='color: #2d3436;'>⚡ Qurate Pro</h2>", unsafe_al
 pulse_label = f"🎯 Flash Pulse {'🔴' if due_count > 0 else ''}"
 choice = st.sidebar.radio("SYSTEM ACCESS", ["📋 Matrix Core", pulse_label, "📅 Ebbing Log"])
 
-# --- 5. 核心功能區 ---
+# --- 5. 核心模組 ---
+
 if "Matrix Core" in choice:
     st.markdown("<div class='main-title'>Matrix Core</div>", unsafe_allow_html=True)
     t_add, t_view, t_edit = st.tabs(["➕ Initialize Node", "🔍 View Matrix", "📝 Modify Protocol"])
 
-    # [A] 新增模式 (全欄位)
+    # --- [A] 新增模式 (完整欄位) ---
     with t_add:
         with st.form("add_matrix_form", clear_on_submit=True):
             c1, c2 = st.columns(2)
             f_word = c1.text_input("Entry (單字)*")
             f_mean = c2.text_input("Definition (中文)*")
+            
             st.write("---")
+            st.caption("Morphology (動詞三態變化)")
             v1, v2, v3 = st.columns(3)
-            f_v1, f_v2, f_v3 = v1.text_input("V1"), v2.text_input("V2"), v3.text_input("V3")
-            f_pos = st.multiselect("Class (詞性)", ["n.", "v.", "adj.", "adv.", "phr.", "prep."])
+            f_v1 = v1.text_input("V1 (Base)")
+            f_v2 = v2.text_input("V2 (Past)")
+            f_v3 = v3.text_input("V3 (Participle)")
+            
             st.write("---")
+            f_pos = st.multiselect("Class (詞性)", ["n.", "v.", "adj.", "adv.", "phr.", "prep."])
+            
             c3, c4 = st.columns(2)
             f_syn = c3.text_input("Synonyms (同義詞)")
-            f_coll = c4.text_input("Collocations (搭配)")
-            f_en = st.text_area("English Definition")
-            f_ex = st.text_area("Example Sentence")
+            f_coll = c4.text_input("Collocations (慣用搭配)")
+            
+            f_en = st.text_area("English Definition (英文定義)")
+            f_ex = st.text_area("Context Example (例句)")
             
             if st.form_submit_button("🚀 SYNC TO CORE"):
                 if f_word.strip() and f_mean.strip():
                     payload = {
-                        "word": f_word.strip(), "meaning_zh": f_mean.strip(), "pos": f_pos,
+                        "word": f_word.strip(), "meaning_zh": f_mean.strip(), 
+                        "pos": f_pos if f_pos else [], # 解決 22P02 關鍵：傳空陣列
                         "other_forms": f"{f_v1} / {f_v2} / {f_v3}" if f_v1 else "",
                         "synonyms": f_syn, "collocations": f_coll, "meaning_en": f_en, "example": f_ex,
                         "mastery": 1, "next_review": get_ebbinghaus_date(1)
@@ -77,39 +89,54 @@ if "Matrix Core" in choice:
                     httpx.post(f"{URL}/rest/v1/vocabulary", json=payload, headers=HEADERS)
                     st.rerun()
 
-    # [B] 分區檢視 (具備 L5 篩選)
+    # --- [B] 分區檢視 (具備篩選邏輯) ---
     with t_view:
         if not df.empty:
             v_f = st.radio("Group Filter", ["Due Today", "All Nodes", "L5 Mastered"], horizontal=True)
             d_df = df.copy()
-            if v_f == "Due Today": d_df = d_df[pd.to_datetime(d_df['next_review']).dt.date <= date.today()]
-            elif v_f == "L5 Mastered": d_df = d_df[d_df['mastery'] >= 5]
-            st.dataframe(d_df[['word', 'meaning_zh', 'mastery', 'next_review', 'other_forms']], use_container_width=True)
+            if v_f == "Due Today":
+                d_df = d_df[pd.to_datetime(d_df['next_review']).dt.date <= date.today()]
+            elif v_f == "L5 Mastered":
+                d_df = d_df[d_df['mastery'] >= 5]
+            
+            st.dataframe(
+                d_df[['word', 'meaning_zh', 'pos', 'mastery', 'next_review', 'other_forms']], 
+                use_container_width=True, hide_index=True
+            )
+        else:
+            st.info("Matrix is currently empty.")
 
-    # [C] 修改模式 (修復 Traceback、補齊 Submit Button、補齊全欄位)
+    # --- [C] 修改模式 (完全對等新增模式的欄位) ---
     with t_edit:
         if not df.empty:
             target_word = st.selectbox("Select Target Node", options=df['word'].tolist())
             row = df[df['word'] == target_word].iloc[0]
             
-            # 三態解析
+            # 解析現有三態
             v_parts = row.get('other_forms', '').split(' / ') if row.get('other_forms') else ["", "", ""]
             while len(v_parts) < 3: v_parts.append("")
             
-            # 劍橋發音連結
-            st.link_button(f"🔊 Cambridge: {target_word}", f"https://dictionary.cambridge.org/dictionary/english-chinese-traditional/{target_word.replace(' ', '-')}")
+            # 劍橋發音與外部連結
+            st.link_button(f"🔊 Cambridge Pronunciation: {target_word}", f"https://dictionary.cambridge.org/dictionary/english-chinese-traditional/{target_word.replace(' ', '-')}")
             
             with st.form("edit_matrix_form"):
                 e1, e2 = st.columns(2)
                 u_word = e1.text_input("Entry (單字)*", value=row['word'])
                 u_mean = e2.text_input("Definition (中文)*", value=row['meaning_zh'])
-                u_date = st.date_input("Manual Schedule", value=datetime.strptime(str(row['next_review'])[:10], '%Y-%m-%d').date())
+                
+                # 艾賓浩斯手動日期調整
+                dt_cur = datetime.strptime(str(row['next_review'])[:10], '%Y-%m-%d').date()
+                u_date = st.date_input("Manual Schedule (複習日期)", value=dt_cur)
                 
                 st.write("---")
+                st.caption("Morphology (動詞三態變化)")
                 ev1, ev2, ev3 = st.columns(3)
-                u_v1, u_v2, u_v3 = ev1.text_input("V1", v_parts[0]), ev2.text_input("V2", v_parts[1]), ev3.text_input("V3", v_parts[2])
+                u_v1 = ev1.text_input("V1 (Base)", value=v_parts[0])
+                u_v2 = ev2.text_input("V2 (Past)", value=v_parts[1])
+                u_v3 = ev3.text_input("V3 (Participle)", value=v_parts[2])
                 
-                # --- 強力防錯：詞性解析 ---
+                st.write("---")
+                # 解決 st.multiselect 報錯的防禦性解析
                 pos_options = ["n.", "v.", "adj.", "adv.", "phr.", "prep."]
                 db_pos = row.get('pos', [])
                 if isinstance(db_pos, str):
@@ -120,53 +147,81 @@ if "Matrix Core" in choice:
                     current_pos = []
                 
                 u_pos = st.multiselect("Class (詞性)", pos_options, default=current_pos)
-                st.write("---")
                 
                 ec3, ec4 = st.columns(2)
                 u_syn = ec3.text_input("Synonyms (同義詞)", value=row.get('synonyms', ''))
-                u_coll = ec4.text_input("Collocations (搭配)", value=row.get('collocations', ''))
-                u_en = st.text_area("English Definition", value=row.get('meaning_en', ''))
-                u_ex = st.text_area("Example Sentence", value=row.get('example', ''))
+                u_coll = ec4.text_input("Collocations (慣用搭配)", value=row.get('collocations', ''))
                 
-                # 確保 Submit Button 存在於 Form 結尾
+                u_en = st.text_area("English Definition", value=row.get('meaning_en', ''))
+                u_ex = st.text_area("Context Example", value=row.get('example', ''))
+                
                 if st.form_submit_button("✅ UPDATE MATRIX"):
                     upd_payload = {
-                        "word": u_word, "meaning_zh": u_mean, "pos": u_pos,
+                        "word": u_word, "meaning_zh": u_mean, 
+                        "pos": u_pos if u_pos else [], # 徹底杜絕 22P02 報錯
                         "next_review": u_date.strftime('%Y-%m-%d'),
                         "other_forms": f"{u_v1} / {u_v2} / {u_v3}" if u_v1 else "",
                         "synonyms": u_syn, "collocations": u_coll, "meaning_en": u_en, "example": u_ex
                     }
                     resp = httpx.patch(f"{URL}/rest/v1/vocabulary?id=eq.{row['id']}", json=upd_payload, headers=HEADERS)
                     if resp.status_code < 300:
-                        st.success("Matrix Synchronized!"); st.rerun()
+                        st.success("Node Synchronized!"); st.rerun()
                     else:
-                        st.error(f"Sync Failed: {resp.text}")
+                        st.error(f"Update Failed: {resp.text}")
 
+# --- 6. 重複挑戰 (Flash Pulse) ---
 elif "Flash Pulse" in choice:
     st.markdown("<div class='main-title'>Flash Pulse</div>", unsafe_allow_html=True)
+    # 篩選今天到期的單字
     due = [w for w in raw_data if str(w.get('next_review'))[:10] <= str(date.today())]
+    
     if due:
         q = random.choice(due)
         st.info(f"💡 Cue: {q['meaning_zh']}")
-        ans = st.text_input("Verify Entry:")
-        if st.button("EXECUTE"):
-            if ans.lower() == q['word'].lower():
-                st.success("Correct!"); st.balloons()
+        if q.get('example'): st.caption(f"Context: {q['example'].replace(q['word'], '____')}")
+        
+        ans = st.text_input("Type the correct Entry (不分大小寫):")
+        if st.button("EXECUTE VERIFICATION"):
+            if ans.strip().lower() == q['word'].lower():
+                st.success("Correct! Matrix Evolved.")
+                st.balloons()
                 new_m = min(5, q['mastery'] + 1)
-                httpx.patch(f"{URL}/rest/v1/vocabulary?id=eq.{q['id']}", json={"mastery": new_m, "next_review": get_ebbinghaus_date(new_m)}, headers=HEADERS)
+                httpx.patch(f"{URL}/rest/v1/vocabulary?id=eq.{q['id']}", 
+                            json={"mastery": new_m, "next_review": get_ebbinghaus_date(new_m)}, headers=HEADERS)
                 st.rerun()
             else:
-                st.error("Incorrect. Try again.")
-    else: st.success("Matrix Stable.")
+                st.error("Verification Failed. Try again.")
+    else:
+        st.success("Matrix Stable. No nodes due for review.")
 
+# --- 7. 線型預測圖表 (Ebbing Log) ---
 elif "Ebbing Log" in choice:
     st.markdown("<div class='main-title'>Ebbing Log</div>", unsafe_allow_html=True)
     if not df.empty:
-        v_d = st.select_slider("Forecast Dimension (Days)", options=[7, 30, 90, 180, 365], value=30)
+        v_d = st.select_slider("Forecast Horizon (Days)", options=[7, 14, 30, 90, 180, 365], value=30)
         df['date'] = pd.to_datetime(df['next_review']).dt.date
+        
+        # 建立預測數列
         dates = [date.today() + timedelta(days=i) for i in range(v_d + 1)]
         counts = [len(df[df['date'] <= d]) for d in dates]
-        # 純線型圖 (無面積)
-        fig = go.Figure(go.Scatter(x=dates, y=counts, mode='lines+markers', line=dict(color='#2d3436', width=2), marker=dict(size=6)))
-        fig.update_layout(plot_bgcolor='white', margin=dict(l=0, r=0, t=10, b=0), height=400, xaxis=dict(showgrid=True, gridcolor='#f0f0f0'), yaxis=dict(showgrid=True, gridcolor='#f0f0f0'))
+        
+        # 純線型圖 (無填充面積)
+        fig = go.Figure(go.Scatter(
+            x=dates, y=counts, 
+            mode='lines+markers', 
+            line=dict(color='#2d3436', width=3),
+            marker=dict(size=8, color='#ff7675'),
+            name="Cumulative Due"
+        ))
+        
+        fig.update_layout(
+            plot_bgcolor='white',
+            hovermode='x unified',
+            margin=dict(l=0, r=0, t=20, b=0),
+            height=450,
+            xaxis=dict(showgrid=True, gridcolor='#f0f0f0', title="Review Date"),
+            yaxis=dict(showgrid=True, gridcolor='#f0f0f0', title="Total Words Due")
+        )
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Insufficient data for log prediction.")
