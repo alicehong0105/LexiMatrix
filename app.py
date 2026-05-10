@@ -38,6 +38,18 @@ def get_ebbinghaus_date(mastery):
 def empty_to_none(v):
     return v if v and v.strip() else None
 
+def parse_other_forms(raw):
+    """資料庫讀出來的 other_forms，不管是 list 還是字串都統一轉成 [v1, v2, v3]"""
+    if isinstance(raw, list):
+        parts = raw
+    elif isinstance(raw, str) and raw:
+        parts = [p.strip() for p in raw.replace('{', '').replace('}', '').split('/')]
+    else:
+        parts = []
+    while len(parts) < 3:
+        parts.append("")
+    return parts[:3]
+
 def load_data():
     try:
         resp = httpx.get(f"{URL}/rest/v1/vocabulary?select=*&order=next_review.asc", headers=HEADERS)
@@ -93,7 +105,7 @@ if "Matrix Core" in choice:
                         "word": f_word.strip(),
                         "meaning_zh": f_mean.strip(),
                         "pos": f_pos if f_pos else [],
-                        "other_forms": f"{f_v1} / {f_v2} / {f_v3}" if f_v1 else None,
+                        "other_forms": [f_v1, f_v2, f_v3] if f_v1 else [],  # ✅ 傳陣列
                         "synonyms": empty_to_none(f_syn),
                         "collocations": empty_to_none(f_coll),
                         "meaning_en": empty_to_none(f_en),
@@ -133,9 +145,8 @@ if "Matrix Core" in choice:
             target_word = st.selectbox("Select Target Node", options=df['word'].tolist())
             row = df[df['word'] == target_word].iloc[0]
 
-            v_parts = row.get('other_forms', '').split(' / ') if row.get('other_forms') else ["", "", ""]
-            while len(v_parts) < 3:
-                v_parts.append("")
+            # ✅ 統一用 parse_other_forms，相容舊字串格式和新陣列格式
+            v_parts = parse_other_forms(row.get('other_forms'))
 
             st.link_button(
                 f"🔊 Cambridge Pronunciation: {target_word}",
@@ -182,7 +193,7 @@ if "Matrix Core" in choice:
                         "meaning_zh": u_mean,
                         "pos": u_pos if u_pos else [],
                         "next_review": u_date.strftime('%Y-%m-%d'),
-                        "other_forms": f"{u_v1} / {u_v2} / {u_v3}" if u_v1 else None,
+                        "other_forms": [u_v1, u_v2, u_v3] if u_v1 else [],  # ✅ 傳陣列
                         "synonyms": empty_to_none(u_syn),
                         "collocations": empty_to_none(u_coll),
                         "meaning_en": empty_to_none(u_en),
