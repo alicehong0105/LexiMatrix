@@ -665,33 +665,29 @@ elif "Flash Pulse" in choice:
 
 
 # ============================================================
-# 8. 頁面：Ebbing Log（改版：各 Level 掌握狀況 + 複習列表）
+# 8. 頁面：Ebbing Log
 # ============================================================
 elif "Ebbing Log" in choice:
     st.markdown("<div class='main-title'>Ebbing Log</div>", unsafe_allow_html=True)
 
     if not df.empty:
 
-        # ── Level 掌握狀況折線圖 ──────────────────────────────
-        st.subheader("📊 單字掌握分佈")
-
-        # Level 切換
+        # ── Level 切換 ────────────────────────────────────────
         selected_level = st.radio(
-            "查看 Level：",
-            [1, 2, 3, 4, 5, "全部"],
+            "篩選 Level：",
+            ["全部", 0, 1, 2, 3, 4, 5],
             horizontal=True,
             key="ebbing_level_filter"
         )
 
-        # 計算各 Level 數量
+        # ── 計算各 Level 數量（含 Level 0）────────────────────
         level_counts = df.groupby("mastery").size().reset_index()
         level_counts.columns = ["Level", "數量"]
-        # 確保 1-5 都有資料（沒有的補 0）
-        all_levels = pd.DataFrame({"Level": [1, 2, 3, 4, 5]})
+        all_levels = pd.DataFrame({"Level": [0, 1, 2, 3, 4, 5]})
         level_counts = all_levels.merge(level_counts, on="Level", how="left").fillna(0)
         level_counts["數量"] = level_counts["數量"].astype(int)
 
-        # 折線圖
+        # ── 折線圖 ────────────────────────────────────────────
         fig_levels = go.Figure()
         fig_levels.add_trace(go.Scatter(
             x=level_counts["Level"],
@@ -701,106 +697,115 @@ elif "Ebbing Log" in choice:
             textposition="top center",
             line=dict(color="#2d3436", width=3),
             marker=dict(size=12, color="#ff7675", line=dict(color="#2d3436", width=2)),
-            name="單字數量"
         ))
         fig_levels.update_layout(
-            plot_bgcolor='white',
-            height=300,
-            margin=dict(l=0, r=0, t=20, b=0),
+            plot_bgcolor="white",
+            height=280,
+            margin=dict(l=0, r=0, t=30, b=0),
             xaxis=dict(
-                tickvals=[1, 2, 3, 4, 5],
-                ticktext=["L1 初學", "L2 認識", "L3 熟悉", "L4 精通", "L5 掌握"],
-                showgrid=True, gridcolor='#f0f0f0'
+                tickvals=[0, 1, 2, 3, 4, 5],
+                ticktext=["L0 遺忘", "L1 初學", "L2 認識", "L3 熟悉", "L4 精通", "L5 掌握"],
+                showgrid=True, gridcolor="#f0f0f0",
             ),
-            yaxis=dict(showgrid=True, gridcolor='#f0f0f0', title="單字數量"),
+            yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="單字數量"),
+            showlegend=False,
         )
         st.plotly_chart(fig_levels, use_container_width=True)
 
-        # Level 摘要統計
+        # ── Level 統計卡片（單行 7 格）────────────────────────
         total = len(df)
-        cols = st.columns(5)
-        level_colors = ["#ff7675", "#fdcb6e", "#74b9ff", "#55efc4", "#6c5ce7"]
-        for i, (col, color) in enumerate(zip(cols, level_colors), start=1):
+        level_colors = ["#d63031", "#ff7675", "#fdcb6e", "#74b9ff", "#55efc4", "#6c5ce7"]
+        level_labels = ["L0", "L1", "L2", "L3", "L4", "L5"]
+        cols = st.columns(6)
+        for i, (col, color, label) in enumerate(zip(cols, level_colors, level_labels)):
             count = int(level_counts[level_counts["Level"] == i]["數量"].values[0])
             pct = f"{count/total*100:.0f}%" if total > 0 else "0%"
             col.markdown(
                 f"<div style='background:{color}20; border-left:4px solid {color}; "
-                f"padding:0.5rem 1rem; border-radius:8px; text-align:center;'>"
-                f"<b>L{i}</b><br>{count} 字<br><small>{pct}</small></div>",
+                f"padding:0.4rem 0.6rem; border-radius:8px; text-align:center;'>"
+                f"<b>{label}</b><br>{count}<br><small>{pct}</small></div>",
                 unsafe_allow_html=True
             )
 
         st.write("")
+        st.divider()
 
-        # ── 篩選後的單字列表 ──────────────────────────────────
-        st.subheader("📋 單字列表")
+        # ── 兩欄佈局：左=單字列表，右=待複習 ─────────────────
+        col_left, col_right = st.columns([3, 2])
 
-        if selected_level == "全部":
-            filtered_df = df
-        else:
-            filtered_df = df[df["mastery"] == int(selected_level)]
-
-        st.caption(f"顯示：{'全部' if selected_level == '全部' else f'L{selected_level}'} — 共 {len(filtered_df)} 個單字")
-
-        if not filtered_df.empty:
-            st.dataframe(
-                filtered_df[['word', 'meaning_zh', 'mastery', 'next_review']].rename(columns={
-                    'word': '單字',
-                    'meaning_zh': '中文定義',
-                    'mastery': 'Level',
-                    'next_review': '下次複習'
-                }),
-                use_container_width=True,
-                hide_index=True
-            )
-
-        # ── 最近待複習列表 ────────────────────────────────────
-        st.write("")
-        st.subheader("⏰ 最近待複習（前 10 筆）")
-
-        upcoming = df.sort_values("next_review").head(10)
-        for _, row in upcoming.iterrows():
-            days_until = (pd.to_datetime(row['next_review']).date() - date.today()).days
-            if days_until < 0:
-                time_label = f"🔴 已過期 {abs(days_until)} 天"
-            elif days_until == 0:
-                time_label = "🟡 今日到期"
+        with col_left:
+            if selected_level == "全部":
+                filtered_df = df
+                label_text = "全部單字"
             else:
-                time_label = f"🟢 {days_until} 天後"
+                filtered_df = df[df["mastery"] == int(selected_level)]
+                label_text = f"L{selected_level} 單字"
 
-            st.markdown(
-                f"- **{row['word']}** — {row['meaning_zh']} "
-                f"｜ {'⭐' * int(row['mastery'])} L{row['mastery']} "
-                f"｜ {time_label}"
-            )
+            st.markdown(f"**📋 {label_text}（{len(filtered_df)} 個）**")
 
-        # ── 原版複習預測圖（保留） ─────────────────────────────
-        st.write("")
-        with st.expander("📈 複習負載預測圖（原版）"):
+            if not filtered_df.empty:
+                st.dataframe(
+                    filtered_df[["word", "meaning_zh", "mastery", "next_review"]].rename(columns={
+                        "word": "單字",
+                        "meaning_zh": "中文定義",
+                        "mastery": "Level",
+                        "next_review": "下次複習"
+                    }),
+                    use_container_width=True,
+                    hide_index=True,
+                    height=350,
+                )
+            else:
+                st.info("此 Level 目前沒有單字。")
+
+        with col_right:
+            st.markdown("**⏰ 最近待複習（前 10 筆）**")
+            upcoming = df.sort_values("next_review").head(10)
+            for _, row in upcoming.iterrows():
+                days_until = (pd.to_datetime(row["next_review"]).date() - date.today()).days
+                if days_until < 0:
+                    badge = f"🔴 過期 {abs(days_until)}天"
+                elif days_until == 0:
+                    badge = "🟡 今日"
+                else:
+                    badge = f"🟢 {days_until}天後"
+                st.markdown(
+                    f"<div style='padding:0.4rem 0.6rem; margin-bottom:0.4rem; "
+                    f"background:#f8f9fa; border-radius:8px; font-size:0.88rem;'>"
+                    f"<b>{row['word']}</b> {badge}<br>"
+                    f"<span style='color:#636e72;'>{row['meaning_zh']} ｜ L{row['mastery']}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
+        st.divider()
+
+        # ── 複習負載預測圖（收折）────────────────────────────
+        with st.expander("📈 複習負載預測圖"):
             v_d = st.select_slider(
-                "Forecast Horizon (Days)",
+                "預測天數",
                 options=[7, 14, 30, 90, 180, 365],
                 value=30
             )
             df_copy = df.copy()
-            df_copy['date'] = pd.to_datetime(df_copy['next_review']).dt.date
+            df_copy["date"] = pd.to_datetime(df_copy["next_review"]).dt.date
             dates  = [date.today() + timedelta(days=i) for i in range(v_d + 1)]
-            counts = [len(df_copy[df_copy['date'] <= d]) for d in dates]
+            counts = [len(df_copy[df_copy["date"] <= d]) for d in dates]
 
             fig = go.Figure(go.Scatter(
                 x=dates, y=counts,
-                mode='lines+markers',
-                line=dict(color='#2d3436', width=3),
-                marker=dict(size=8, color='#ff7675'),
-                name="Cumulative Due"
+                mode="lines+markers",
+                line=dict(color="#2d3436", width=3),
+                marker=dict(size=8, color="#ff7675"),
             ))
             fig.update_layout(
-                plot_bgcolor='white',
-                hovermode='x unified',
-                margin=dict(l=0, r=0, t=20, b=0),
-                height=350,
-                xaxis=dict(showgrid=True, gridcolor='#f0f0f0', title="Review Date"),
-                yaxis=dict(showgrid=True, gridcolor='#f0f0f0', title="Total Words Due")
+                plot_bgcolor="white",
+                hovermode="x unified",
+                margin=dict(l=0, r=0, t=10, b=0),
+                height=300,
+                xaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="日期"),
+                yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="累計待複習單字數"),
+                showlegend=False,
             )
             st.plotly_chart(fig, use_container_width=True)
 
