@@ -1,6 +1,7 @@
 [theme]
-primaryColor = "#00D2FF"         # 核心亮點顏色（例如：按鈕、開關亮起時的極光藍）
-backgroundColor = "#121214"      # 整個網頁的背景色（使用高級的深墨黑，取代原本死沉的灰色）
-secondaryBackgroundColor = "#1A1A1E" # 卡片、側邊欄的背景色（帶有一點點層次感的暗灰）
-textColor = "#E2E8F0"            # 主要文字顏色（柔和的米白，看久了眼睛不刺眼）
-font = "sans serif"              # 字體
+base = "dark"
+primaryColor = "#00cec9"
+backgroundColor = "#0d1117"
+secondaryBackgroundColor = "#161b22"
+textColor = "#e6edf3"
+font = "monospace"
