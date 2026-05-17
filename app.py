@@ -175,9 +175,15 @@ if access_token:
     headers = get_headers(access_token)
 else:
     headers = {}
-access_token = st.session_state.access_token
+# ✨ 改用 .get() 安全護罩
+access_token = st.session_state.get("access_token", None)
 user_email = st.session_state.get("user_email", "")
-headers = get_headers(access_token)
+
+# 只有真的拿到 token 時，才去換取 headers
+if access_token:
+    headers = get_headers(access_token)
+else:
+    headers = {}  # 沒登入時，先給一個空字典，後面程式才不會一起壞掉
 
 
 # ============================================================
