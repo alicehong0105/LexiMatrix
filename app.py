@@ -182,7 +182,6 @@ def show_auth_page():
         </div>
     """, unsafe_allow_html=True)
 
-    # 置中顯示
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         tab_login, tab_signup = st.tabs(["🔑 登入", "📝 註冊"])
@@ -233,12 +232,10 @@ if "access_token" not in st.session_state:
     show_auth_page()
     st.stop()
 
-# 取得目前用戶資訊
 access_token = st.session_state.access_token
 user_email   = st.session_state.get("user_email", "")
 HEADERS      = get_headers(access_token)
 
-# 載入資料
 raw_data = load_data(access_token)
 df = pd.DataFrame(raw_data) if raw_data else pd.DataFrame()
 due_count = (
@@ -290,8 +287,26 @@ if "Matrix Core" in choice:
             f_v3 = v3.text_input("V3 (Participle)")
 
             st.write("---")
-            f_pos = st.multiselect("Class（詞性）", ["n.", "v.", "adj.", "adv.", "phr.", "prep."])
+            
+            all_categories = sorted(set(
+                row.get('category', '預設') or '預設'
+                for row in raw_data
+            )) if raw_data else ['預設']
+            if '預設' not in all_categories:
+                all_categories = ['預設'] + all_categories
 
+            f_category = st.selectbox(
+                "Category（類別）",
+                all_categories + ["＋ 新增類別"],
+                key="add_category_select"
+            )
+            
+            # --- Syntax Fix Here ---
+            if f_category == "＋ 新增類別":
+                f_category = st.text_input("輸入新類別名稱", key="add_new_category")
+                
+            f_pos = st.multiselect("Class（詞性）", ["n.", "v.", "adj.", "adv.", "phr.", "prep."])
+            
             c3, c4 = st.columns(2)
             f_syn  = c3.text_input("Synonyms（同義詞）")
             f_coll = c4.text_input("Collocations（慣用搭配）")
@@ -312,7 +327,8 @@ if "Matrix Core" in choice:
                         "example":     empty_to_none(f_ex),
                         "mastery":     1,
                         "next_review": get_ebbinghaus_date(1),
-                        "user_id":     st.session_state.user_id
+                        "user_id":     st.session_state.user_id,
+                        "category":    f_category
                     }
                     resp = httpx.post(
                         f"{URL}/rest/v1/vocabulary",
@@ -760,42 +776,29 @@ elif "Ebbing Log" in choice:
                     use_container_width=True, hide_index=True, height=350,
                 )
             else:
-                st.info("此 Level 目前沒有單字。")
-
+                st.info("此分類目前沒有單字！")
+                
+        # --- Code Completed From Here ---
         with col_right:
-            st.markdown("**⏰ 最近待複習（前 10 筆）**")
-            upcoming = df.sort_values("next_review").head(10)
-            for _, row in upcoming.iterrows():
-                days_until = (pd.to_datetime(row["next_review"]).date() - date.today()).days
-                badge = f"🔴 過期{abs(days_until)}天" if days_until < 0 else ("🟡 今日" if days_until == 0 else f"🟢 {days_until}天後")
-                st.markdown(
-                    f"<div style='padding:0.4rem 0.6rem;margin-bottom:0.4rem;"
-                    f"background:#f8f9fa;border-radius:8px;font-size:0.88rem'>"
-                    f"<b>{row['word']}</b> {badge}<br>"
-                    f"<span style='color:#636e72'>{row['meaning_zh']} ｜ L{row['mastery']}</span>"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
-
-        st.divider()
-        with st.expander("📈 複習負載預測圖"):
-            v_d = st.select_slider("預測天數", options=[7, 14, 30, 90, 180, 365], value=30)
-            df_copy = df.copy()
-            df_copy["date"] = pd.to_datetime(df_copy["next_review"]).dt.date
-            dates  = [date.today() + timedelta(days=i) for i in range(v_d + 1)]
-            counts = [len(df_copy[df_copy["date"] <= d]) for d in dates]
-            fig = go.Figure(go.Scatter(
-                x=dates, y=counts, mode="lines+markers",
-                line=dict(color="#2d3436", width=3),
-                marker=dict(size=8, color="#ff7675"),
-            ))
-            fig.update_layout(
-                plot_bgcolor="white", hovermode="x unified",
-                margin=dict(l=0, r=0, t=10, b=0), height=300,
-                xaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="日期"),
-                yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="累計待複習單字數"),
-                showlegend=False,
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("**📅 未來 7 天複習預測**")
+            
+            df_review = df.copy()
+            df_review['next_review'] = pd.to_datetime(df_review['next_review']).dt.date
+            
+            future_dates = [date.today() + timedelta(days=i) for i in range(7)]
+            future_counts = df_review[df_review['next_review'].isin(future_dates)].groupby('next_review').size()
+            
+            for d in future_dates:
+                count = future_counts.get(d, 0)
+                is_today = " (今日)" if d == date.today() else ""
+                
+                # Visual bar simulation using markdown
+                bar_length = min(count, 15)  # Cap bar visual length at 15
+                bar = "🟦" * bar_length if count > 0 else "⬜"
+                
+                st.markdown(f"**{d.strftime('%m/%d')}**{is_today}")
+                st.caption(f"{bar} **{count}** 個單字")
+                st.write("")
+                
     else:
-        st.info("Insufficient data for log prediction.")
+        st.info("目前系統中還沒有單字，請先到 Matrix Core 新增！")
