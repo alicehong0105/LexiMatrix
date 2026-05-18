@@ -291,16 +291,6 @@ def play_pronunciation(word: str):
 # 5. 登入／註冊頁面
 # ============================================================
 def show_auth_page():
-    st.markdown(
-        """
-        <div class='auth-card'>
-            <div class='auth-title'>⚡ Qurate Pro</div>
-            <div class='auth-sub'>科學化語言學習管理系統</div>
-        </div>
-    """,
-        unsafe_allow_html=True,
-    )
-
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         tab_login, tab_signup = st.tabs(["🔑 登入", "📝 註冊"])
