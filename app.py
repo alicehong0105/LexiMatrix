@@ -12,13 +12,15 @@ import base64
 # ============================================================
 st.set_page_config(page_title="Qurate Pro", page_icon="⚡", layout="wide")
 
-# ✨ 終極完美版：保留超帥設計、修復箭頭破圖、完美支援淺色模式切換！
 st.markdown(
     """
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Space+Grotesk:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap');
 
-        /* ── 標題（文字改用變數，自動適應深淺色） ── */
+        [data-testid="stHeader"] { background: rgba(0,0,0,0); height: 3rem !important; }
+        .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
+        footer { visibility: hidden; }
+
         .main-title {
             font-family: 'JetBrains Mono', monospace !important;
             color: #00cec9;
@@ -29,29 +31,15 @@ st.markdown(
             text-shadow: 0 0 30px rgba(0,206,201,0.3);
         }
 
-        /* ── 修正：側邊欄文字，不使用星號，精準改變標題與標籤 ── */
-        [data-testid="stSidebar"] h1, 
-        [data-testid="stSidebar"] h2, 
-        [data-testid="stSidebar"] h3 {
-            color: #00cec9 !important;
-            font-family: 'JetBrains Mono', monospace !important;
-        }
-        
-        [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
-            font-family: 'JetBrains Mono', monospace !important;
-        }
-
-        /* ── 按鈕美化 ── */
         .stButton > button {
             width: 100%;
             border-radius: 8px;
             height: 3.2rem;
             background: linear-gradient(135deg, #00cec9, #0984e3) !important;
-            color: #ffffff !important; /* 讓按鈕字體保持白字 */
+            color: #ffffff !important;
             font-weight: 700;
             border: none;
             font-family: 'JetBrains Mono', monospace;
-            letter-spacing: 0.5px;
             transition: all 0.2s ease;
             box-shadow: 0 0 20px rgba(0,206,201,0.2);
         }
@@ -60,62 +48,22 @@ st.markdown(
             transform: translateY(-1px);
         }
 
-        /* ── Tabs ── */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 8px;
-            border-radius: 10px;
-            padding: 4px;
-        }
-        .stTabs [data-baseweb="tab"] {
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-        }
-        .stTabs [aria-selected="true"] {
-            background: linear-gradient(135deg, #00cec9, #0984e3) !important;
-            color: #ffffff !important;
-            border-radius: 8px;
-            font-weight: 700;
-        }
+        .stTabs [data-baseweb="tab-list"] { gap: 8px; border-radius: 10px; padding: 4px; }
+        .stTabs [data-baseweb="tab"] { border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; }
+        .stTabs [aria-selected="true"] { background: linear-gradient(135deg, #00cec9, #0984e3) !important; color: #ffffff !important; border-radius: 8px; font-weight: 700; }
 
-        /* ── 卡片容器美化（保留原本漂亮的框線與圓角） ── */
         [data-testid="stVerticalBlockBorderWrapper"] {
-            border: 1px solid rgba(0, 206, 201, 0.2) !important;
+            border: 1px solid rgba(0,206,201,0.2) !important;
             border-radius: 12px !important;
             box-shadow: 0 0 20px rgba(0,206,201,0.05);
         }
 
-        /* ── Input fields ── */
-        [data-testid="stTextInput"] input,
-        [data-testid="stTextArea"] textarea {
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-        }
         [data-testid="stTextInput"] input:focus,
         [data-testid="stTextArea"] textarea:focus {
             border-color: #00cec9 !important;
             box-shadow: 0 0 0 3px rgba(0,206,201,0.15) !important;
         }
 
-        /* ── 認證卡片 ── */
-        .auth-card {
-            max-width: 420px;
-            margin: 4rem auto;
-            padding: 2.5rem;
-            border-radius: 16px;
-            box-shadow: 0 0 40px rgba(0,206,201,0.1);
-        }
-        .auth-title {
-            text-align: center;
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #00cec9;
-            margin-bottom: 0.3rem;
-            font-family: 'JetBrains Mono', monospace;
-            text-shadow: 0 0 20px rgba(0,206,201,0.4);
-        }
-
-        /* 其他自訂小徽章元件 ── */
         .hint-badge {
             background: linear-gradient(135deg, rgba(0,206,201,0.1), rgba(9,132,227,0.1));
             color: #00cec9;
@@ -138,52 +86,40 @@ st.markdown(
             margin-bottom: 0.5rem;
             font-family: 'JetBrains Mono', monospace;
         }
-
-        /* ── 進度條 ── */
+        .tutorial-card {
+            background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+            border: 1px solid #00cec9;
+            border-radius: 16px;
+            padding: 2.5rem;
+            color: #e6edf3;
+            text-align: center;
+            margin: 1rem 0;
+            box-shadow: 0 0 40px rgba(0,206,201,0.15);
+        }
         [data-testid="stProgressBar"] > div > div {
             background: linear-gradient(90deg, #00cec9, #0984e3) !important;
         }
-
-        /* ── 通用字體套用 ── */
-        [data-testid="stAlert"], [data-testid="stRadio"] label, [data-testid="stCaptionContainer"] {
-            font-family: 'JetBrains Mono', monospace;
-        }
     </style>
-    """,
+""",
     unsafe_allow_html=True,
 )
 
-# 1. 補上 Supabase 的連線設定（如果你的 st.secrets 有設定的話）
+
+# ============================================================
+# 2. API 設定
+# ============================================================
 URL = st.secrets["connections"]["supabase"]["url"]
 KEY = st.secrets["connections"]["supabase"]["key"]
 
 
-# 2. 補上消失的 get_headers 函數
-def get_headers(token: str):
+def get_headers(access_token=None):
+    token = access_token or KEY
     return {
         "apikey": KEY,
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
+        "Prefer": "return=representation",
     }
-
-
-# 3. 接下來才是你原本安全的寫法（我也幫你改成防閃退版本了！）
-access_token = st.session_state.get("access_token", None)
-user_email = st.session_state.get("user_email", "")
-
-if access_token:
-    headers = get_headers(access_token)
-else:
-    headers = {}
-# ✨ 改用 .get() 安全護罩
-access_token = st.session_state.get("access_token", None)
-user_email = st.session_state.get("user_email", "")
-
-# 只有真的拿到 token 時，才去換取 headers
-if access_token:
-    headers = get_headers(access_token)
-else:
-    headers = {}  # 沒登入時，先給一個空字典，後面程式才不會一起壞掉
 
 
 # ============================================================
@@ -246,7 +182,6 @@ def calculate_new_mastery(current_mastery, penalty=2):
 
 
 def load_data(access_token):
-    """載入目前登入用戶的單字（RLS 自動過濾）"""
     try:
         resp = httpx.get(
             f"{URL}/rest/v1/vocabulary?select=*&order=next_review.asc",
@@ -265,6 +200,17 @@ def update_mastery_in_db(word_id, new_mastery, access_token):
     )
 
 
+def get_all_categories(raw_data):
+    cats = (
+        sorted(set((row.get("category") or "預設") for row in raw_data))
+        if raw_data
+        else []
+    )
+    if "預設" not in cats:
+        cats = ["預設"] + cats
+    return cats
+
+
 def play_pronunciation(word: str):
     try:
         from gtts import gTTS
@@ -274,12 +220,14 @@ def play_pronunciation(word: str):
         with open("/tmp/pronunciation.mp3", "rb") as f:
             audio_bytes = f.read()
         audio_b64 = base64.b64encode(audio_bytes).decode()
-        audio_html = f"""
+        st.markdown(
+            f"""
             <audio autoplay controls style="width:100%; margin-top:0.5rem;">
                 <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
             </audio>
-        """
-        st.markdown(audio_html, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
     except Exception:
         st.link_button(
             f"🔊 Cambridge: {word}",
@@ -291,6 +239,16 @@ def play_pronunciation(word: str):
 # 5. 登入／註冊頁面
 # ============================================================
 def show_auth_page():
+    st.markdown(
+        """
+        <div style='text-align:center; margin-top:4rem;'>
+            <div style='font-family:JetBrains Mono,monospace; font-size:2.5rem; font-weight:800; color:#00cec9; text-shadow:0 0 20px rgba(0,206,201,0.4);'>⚡ Qurate Pro</div>
+            <div style='color:#8b949e; font-family:JetBrains Mono,monospace; margin-bottom:2rem;'>科學化語言學習管理系統</div>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         tab_login, tab_signup = st.tabs(["🔑 登入", "📝 註冊"])
@@ -308,10 +266,9 @@ def show_auth_page():
                         st.session_state.user_email = result["user"]["email"]
                         st.rerun()
                     else:
-                        err = result.get(
-                            "error_description", "登入失敗，請確認帳號密碼"
+                        st.error(
+                            result.get("error_description", "登入失敗，請確認帳號密碼")
                         )
-                        st.error(err)
                 else:
                     st.warning("請填寫 Email 和密碼")
 
@@ -332,12 +289,9 @@ def show_auth_page():
                     with st.spinner("建立帳號中..."):
                         result = sign_up(new_email, new_password)
                     if "id" in result.get("user", {}):
-                        st.success(
-                            "🎉 帳號建立成功！請去信箱確認驗證信，然後回來登入。"
-                        )
+                        st.success("🎉 帳號建立成功！請直接登入。")
                     else:
-                        err = result.get("error_description", "註冊失敗")
-                        st.error(err)
+                        st.error(result.get("error_description", "註冊失敗"))
 
 
 # ============================================================
@@ -347,6 +301,9 @@ if "access_token" not in st.session_state:
     show_auth_page()
     st.stop()
 
+access_token = st.session_state.access_token
+user_email = st.session_state.get("user_email", "")
+HEADERS = get_headers(access_token)
 
 raw_data = load_data(access_token)
 df = pd.DataFrame(raw_data) if raw_data else pd.DataFrame()
@@ -355,13 +312,15 @@ due_count = (
     if not df.empty
     else 0
 )
+all_categories = get_all_categories(raw_data)
 
 
 # ============================================================
 # 7. 側邊導航
 # ============================================================
 st.sidebar.markdown(
-    "<h2 style='color: #2d3436;'>⚡ Qurate Pro</h2>", unsafe_allow_html=True
+    "<h2 style='color:#00cec9; font-family:JetBrains Mono,monospace;'>⚡ Qurate Pro</h2>",
+    unsafe_allow_html=True,
 )
 st.sidebar.caption(f"👤 {user_email}")
 
@@ -374,6 +333,15 @@ if st.sidebar.button("🚪 登出"):
 pulse_label = f"🎯 Flash Pulse {'🔴' if due_count > 0 else ''}"
 choice = st.sidebar.radio(
     "SYSTEM ACCESS", ["📋 Matrix Core", "🎴 Matrix Cards", pulse_label, "📅 Ebbing Log"]
+)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("**📂 類別篩選**")
+sidebar_cat = st.sidebar.selectbox(
+    "目前類別",
+    ["全部"] + all_categories,
+    key="sidebar_cat_filter",
+    label_visibility="collapsed",
 )
 
 if st.sidebar.button("🔄 Force Sync Matrix"):
@@ -396,6 +364,26 @@ if "Matrix Core" in choice:
             f_mean = c2.text_input("Definition（中文）*")
 
             st.write("---")
+            ca1, ca2 = st.columns(2)
+            with ca1:
+                f_cat_select = st.selectbox(
+                    "Category（類別）",
+                    all_categories + ["＋ 新增類別"],
+                    key="add_cat_select",
+                )
+            with ca2:
+                f_cat_new = st.text_input(
+                    "新類別名稱",
+                    placeholder="選「＋ 新增類別」後填寫",
+                    key="add_cat_new",
+                )
+            f_category = (
+                f_cat_new.strip()
+                if f_cat_select == "＋ 新增類別" and f_cat_new.strip()
+                else (f_cat_select if f_cat_select != "＋ 新增類別" else "預設")
+            )
+
+            st.write("---")
             st.caption("Morphology（動詞三態變化）")
             v1, v2, v3 = st.columns(3)
             f_v1 = v1.text_input("V1 (Base)")
@@ -403,25 +391,6 @@ if "Matrix Core" in choice:
             f_v3 = v3.text_input("V3 (Participle)")
 
             st.write("---")
-
-            all_categories = (
-                sorted(set(row.get("category", "預設") or "預設" for row in raw_data))
-                if raw_data
-                else ["預設"]
-            )
-            if "預設" not in all_categories:
-                all_categories = ["預設"] + all_categories
-
-            f_category = st.selectbox(
-                "Category（類別）",
-                all_categories + ["＋ 新增類別"],
-                key="add_category_select",
-            )
-
-            # --- Syntax Fix Here ---
-            if f_category == "＋ 新增類別":
-                f_category = st.text_input("輸入新類別名稱", key="add_new_category")
-
             f_pos = st.multiselect(
                 "Class（詞性）", ["n.", "v.", "adj.", "adv.", "phr.", "prep."]
             )
@@ -438,6 +407,7 @@ if "Matrix Core" in choice:
                     payload = {
                         "word": f_word.strip(),
                         "meaning_zh": f_mean.strip(),
+                        "category": f_category,
                         "pos": f_pos if f_pos else [],
                         "other_forms": [f_v1, f_v2, f_v3] if f_v1 else [],
                         "synonyms": empty_to_none(f_syn),
@@ -447,13 +417,12 @@ if "Matrix Core" in choice:
                         "mastery": 1,
                         "next_review": get_ebbinghaus_date(1),
                         "user_id": st.session_state.user_id,
-                        "category": f_category,
                     }
                     resp = httpx.post(
-                        f"{URL}/rest/v1/vocabulary", json=payload, headers=headers
+                        f"{URL}/rest/v1/vocabulary", json=payload, headers=HEADERS
                     )
                     if resp.status_code < 300:
-                        st.success("🎉 新增成功！")
+                        st.success(f"🎉 新增成功！類別：{f_category}")
                         st.rerun()
                     else:
                         st.error(f"同步失敗：{resp.text}")
@@ -462,116 +431,176 @@ if "Matrix Core" in choice:
 
     with t_view:
         if not df.empty:
-            v_f = st.radio(
-                "Group Filter",
-                ["Due Today", "All Nodes", "L5 Mastered"],
-                horizontal=True,
-            )
+            col_cat, col_grp = st.columns([1, 2])
+            with col_cat:
+                view_cat = st.selectbox(
+                    "📂 類別",
+                    ["全部"] + all_categories,
+                    index=(["全部"] + all_categories).index(sidebar_cat)
+                    if sidebar_cat in (["全部"] + all_categories)
+                    else 0,
+                    key="view_cat",
+                )
+            with col_grp:
+                v_f = st.radio(
+                    "Group Filter",
+                    ["Due Today", "All Nodes", "L5 Mastered"],
+                    horizontal=True,
+                )
+
             d_df = df.copy()
+            if view_cat != "全部":
+                d_df = d_df[d_df["category"] == view_cat]
             if v_f == "Due Today":
                 d_df = d_df[pd.to_datetime(d_df["next_review"]).dt.date <= date.today()]
             elif v_f == "L5 Mastered":
                 d_df = d_df[d_df["mastery"] >= 5]
-            st.dataframe(
-                d_df[
-                    [
-                        "word",
-                        "meaning_zh",
-                        "pos",
-                        "mastery",
-                        "next_review",
-                        "other_forms",
-                    ]
-                ],
-                use_container_width=True,
-                hide_index=True,
-            )
+
+            st.caption(f"顯示 {len(d_df)} 筆")
+            display_cols = [
+                "word",
+                "meaning_zh",
+                "category",
+                "pos",
+                "mastery",
+                "next_review",
+            ]
+            existing_cols = [c for c in display_cols if c in d_df.columns]
+            st.dataframe(d_df[existing_cols], use_container_width=True, hide_index=True)
         else:
             st.info("Matrix is currently empty.")
 
     with t_edit:
         if not df.empty:
-            target_word = st.selectbox(
-                "Select Target Node", options=df["word"].tolist()
+            edit_cat_filter = st.selectbox(
+                "📂 篩選類別", ["全部"] + all_categories, key="edit_cat_filter"
             )
-            row = df[df["word"] == target_word].iloc[0]
-            v_parts = parse_other_forms(row.get("other_forms"))
+            word_options = (
+                df[df["category"] == edit_cat_filter]["word"].tolist()
+                if edit_cat_filter != "全部"
+                else df["word"].tolist()
+            )
 
-            col_pron, _ = st.columns([1, 2])
-            with col_pron:
-                if st.button(f"🔊 播放發音：{target_word}"):
-                    play_pronunciation(target_word)
+            if not word_options:
+                st.info("此類別目前沒有單字。")
+            else:
+                target_word = st.selectbox("Select Target Node", options=word_options)
+                row = df[df["word"] == target_word].iloc[0]
+                v_parts = parse_other_forms(row.get("other_forms"))
+                current_cat = row.get("category") or "預設"
 
-            with st.form("edit_matrix_form"):
-                e1, e2 = st.columns(2)
-                u_word = e1.text_input("Entry（單字）*", value=row["word"])
-                u_mean = e2.text_input("Definition（中文）*", value=row["meaning_zh"])
-
-                dt_cur = datetime.strptime(
-                    str(row["next_review"])[:10], "%Y-%m-%d"
-                ).date()
-                u_date = st.date_input("Manual Schedule（複習日期）", value=dt_cur)
-
-                st.write("---")
-                st.caption("Morphology（動詞三態變化）")
-                ev1, ev2, ev3 = st.columns(3)
-                u_v1 = ev1.text_input("V1 (Base)", value=v_parts[0])
-                u_v2 = ev2.text_input("V2 (Past)", value=v_parts[1])
-                u_v3 = ev3.text_input("V3 (Participle)", value=v_parts[2])
-
-                st.write("---")
-                pos_options = ["n.", "v.", "adj.", "adv.", "phr.", "prep."]
-                db_pos = row.get("pos", [])
-                if isinstance(db_pos, str):
-                    current_pos = [
-                        p.strip()
-                        for p in db_pos.strip("{}").split(",")
-                        if p in pos_options
-                    ]
-                elif isinstance(db_pos, list):
-                    current_pos = [p for p in db_pos if p in pos_options]
-                else:
-                    current_pos = []
-
-                u_pos = st.multiselect(
-                    "Class（詞性）", pos_options, default=current_pos
+                st.markdown(
+                    f"<span class='cat-badge'>📂 {current_cat}</span>",
+                    unsafe_allow_html=True,
                 )
 
-                ec3, ec4 = st.columns(2)
-                u_syn = ec3.text_input("Synonyms", value=row.get("synonyms", "") or "")
-                u_coll = ec4.text_input(
-                    "Collocations", value=row.get("collocations", "") or ""
-                )
+                col_pron, _ = st.columns([1, 2])
+                with col_pron:
+                    if st.button(f"🔊 播放發音：{target_word}"):
+                        play_pronunciation(target_word)
 
-                u_en = st.text_area(
-                    "English Definition", value=row.get("meaning_en", "") or ""
-                )
-                u_ex = st.text_area(
-                    "Context Example", value=row.get("example", "") or ""
-                )
-
-                if st.form_submit_button("✅ UPDATE MATRIX"):
-                    upd_payload = {
-                        "word": u_word,
-                        "meaning_zh": u_mean,
-                        "pos": u_pos if u_pos else [],
-                        "next_review": u_date.strftime("%Y-%m-%d"),
-                        "other_forms": [u_v1, u_v2, u_v3] if u_v1 else [],
-                        "synonyms": empty_to_none(u_syn),
-                        "collocations": empty_to_none(u_coll),
-                        "meaning_en": empty_to_none(u_en),
-                        "example": empty_to_none(u_ex),
-                    }
-                    resp = httpx.patch(
-                        f"{URL}/rest/v1/vocabulary?id=eq.{row['id']}",
-                        json=upd_payload,
-                        headers=headers,
+                with st.form("edit_matrix_form"):
+                    e1, e2 = st.columns(2)
+                    u_word = e1.text_input("Entry（單字）*", value=row["word"])
+                    u_mean = e2.text_input(
+                        "Definition（中文）*", value=row["meaning_zh"]
                     )
-                    if resp.status_code < 300:
-                        st.success("Node Synchronized!")
-                        st.rerun()
+
+                    ea1, ea2 = st.columns(2)
+                    with ea1:
+                        cat_index = (
+                            all_categories.index(current_cat)
+                            if current_cat in all_categories
+                            else 0
+                        )
+                        u_cat_select = st.selectbox(
+                            "Category（類別）",
+                            all_categories + ["＋ 新增類別"],
+                            index=cat_index,
+                            key="edit_cat_select",
+                        )
+                    with ea2:
+                        u_cat_new = st.text_input(
+                            "新類別名稱",
+                            placeholder="選「＋ 新增類別」後填寫",
+                            key="edit_cat_new",
+                        )
+                    u_category = (
+                        u_cat_new.strip()
+                        if u_cat_select == "＋ 新增類別" and u_cat_new.strip()
+                        else (
+                            u_cat_select
+                            if u_cat_select != "＋ 新增類別"
+                            else current_cat
+                        )
+                    )
+
+                    dt_cur = datetime.strptime(
+                        str(row["next_review"])[:10], "%Y-%m-%d"
+                    ).date()
+                    u_date = st.date_input("Manual Schedule（複習日期）", value=dt_cur)
+
+                    st.write("---")
+                    st.caption("Morphology（動詞三態變化）")
+                    ev1, ev2, ev3 = st.columns(3)
+                    u_v1 = ev1.text_input("V1 (Base)", value=v_parts[0])
+                    u_v2 = ev2.text_input("V2 (Past)", value=v_parts[1])
+                    u_v3 = ev3.text_input("V3 (Participle)", value=v_parts[2])
+
+                    st.write("---")
+                    pos_options = ["n.", "v.", "adj.", "adv.", "phr.", "prep."]
+                    db_pos = row.get("pos", [])
+                    if isinstance(db_pos, str):
+                        current_pos = [
+                            p.strip()
+                            for p in db_pos.strip("{}").split(",")
+                            if p in pos_options
+                        ]
+                    elif isinstance(db_pos, list):
+                        current_pos = [p for p in db_pos if p in pos_options]
                     else:
-                        st.error(f"Update Failed: {resp.text}")
+                        current_pos = []
+                    u_pos = st.multiselect(
+                        "Class（詞性）", pos_options, default=current_pos
+                    )
+
+                    ec3, ec4 = st.columns(2)
+                    u_syn = ec3.text_input(
+                        "Synonyms", value=row.get("synonyms", "") or ""
+                    )
+                    u_coll = ec4.text_input(
+                        "Collocations", value=row.get("collocations", "") or ""
+                    )
+                    u_en = st.text_area(
+                        "English Definition", value=row.get("meaning_en", "") or ""
+                    )
+                    u_ex = st.text_area(
+                        "Context Example", value=row.get("example", "") or ""
+                    )
+
+                    if st.form_submit_button("✅ UPDATE MATRIX"):
+                        upd_payload = {
+                            "word": u_word,
+                            "meaning_zh": u_mean,
+                            "category": u_category,
+                            "pos": u_pos if u_pos else [],
+                            "next_review": u_date.strftime("%Y-%m-%d"),
+                            "other_forms": [u_v1, u_v2, u_v3] if u_v1 else [],
+                            "synonyms": empty_to_none(u_syn),
+                            "collocations": empty_to_none(u_coll),
+                            "meaning_en": empty_to_none(u_en),
+                            "example": empty_to_none(u_ex),
+                        }
+                        resp = httpx.patch(
+                            f"{URL}/rest/v1/vocabulary?id=eq.{row['id']}",
+                            json=upd_payload,
+                            headers=HEADERS,
+                        )
+                        if resp.status_code < 300:
+                            st.success("Node Synchronized!")
+                            st.rerun()
+                        else:
+                            st.error(f"Update Failed: {resp.text}")
         else:
             st.info("Matrix is currently empty.")
 
@@ -613,8 +642,8 @@ elif "Matrix Cards" in choice:
         },
         {
             "icon": "📦",
-            "title": "Step 3：選擇複習範圍",
-            "desc": "今日到期 = 艾賓浩斯排程到期的單字\n全部單字 = 所有單字都會出現",
+            "title": "Step 3：選擇複習範圍與類別",
+            "desc": "今日到期 = 艾賓浩斯排程到期的單字\n全部單字 = 所有單字\n可用類別篩選只練特定主題！",
         },
         {
             "icon": "🚀",
@@ -689,7 +718,8 @@ elif "Matrix Cards" in choice:
                 key="back_select",
                 label_visibility="collapsed",
             )
-        col_scope, col_confirm = st.columns([2, 1])
+
+        col_scope, col_cat, col_confirm = st.columns([1, 1, 1])
         with col_scope:
             card_scope = st.radio(
                 "複習範圍",
@@ -697,12 +727,26 @@ elif "Matrix Cards" in choice:
                 horizontal=True,
                 index=0 if st.session_state.get("card_scope", "due") == "due" else 1,
             )
+        with col_cat:
+            card_cat = st.selectbox(
+                "📂 類別篩選",
+                ["全部"] + all_categories,
+                index=(["全部"] + all_categories).index(
+                    st.session_state.get("card_cat", "全部")
+                )
+                if st.session_state.get("card_cat", "全部")
+                in (["全部"] + all_categories)
+                else 0,
+                key="card_cat_select",
+            )
         with col_confirm:
+            st.write("")
             st.write("")
             if st.button("✅ 套用設定", use_container_width=True):
                 st.session_state.card_front_fields = front_choices
                 st.session_state.card_back_fields = back_choices
                 st.session_state.card_scope = "due" if "今日" in card_scope else "all"
+                st.session_state.card_cat = card_cat
                 st.session_state.card_index = 0
                 st.session_state.is_flipped = False
                 st.rerun()
@@ -721,6 +765,8 @@ elif "Matrix Cards" in choice:
         ]
     if "card_scope" not in st.session_state:
         st.session_state.card_scope = "due"
+    if "card_cat" not in st.session_state:
+        st.session_state.card_cat = "全部"
 
     if st.session_state.card_scope == "due":
         due_cards = [
@@ -728,6 +774,12 @@ elif "Matrix Cards" in choice:
         ]
     else:
         due_cards = list(raw_data)
+    if st.session_state.card_cat != "全部":
+        due_cards = [
+            w
+            for w in due_cards
+            if (w.get("category") or "預設") == st.session_state.card_cat
+        ]
 
     def render_fields(card, field_labels, is_front=False):
         for label in field_labels:
@@ -735,6 +787,11 @@ elif "Matrix Cards" in choice:
             if not field_key:
                 continue
             if field_key == "word":
+                cat_display = card.get("category") or "預設"
+                st.markdown(
+                    f"<div style='text-align:center'><span class='cat-badge'>📂 {cat_display}</span></div>",
+                    unsafe_allow_html=True,
+                )
                 st.markdown(
                     f"<h1 style='text-align:center;font-size:3.5rem;margin:0.5rem 0'>{card['word']}</h1>",
                     unsafe_allow_html=True,
@@ -747,7 +804,7 @@ elif "Matrix Cards" in choice:
                 val = card.get("meaning_zh", "")
                 if val:
                     st.markdown(
-                        f"<h3 style='text-align:center;color:#2d3436'>{val}</h3>",
+                        f"<h3 style='text-align:center'>{val}</h3>",
                         unsafe_allow_html=True,
                     )
             elif field_key == "meaning_en":
@@ -788,13 +845,15 @@ elif "Matrix Cards" in choice:
 
         current_card = due_cards[st.session_state.card_index]
         scope_label = "今日到期" if st.session_state.card_scope == "due" else "全部單字"
+        cat_label = (
+            f"｜📂 {st.session_state.card_cat}"
+            if st.session_state.card_cat != "全部"
+            else ""
+        )
         st.caption(
-            f"📦 {scope_label}｜正面：{' + '.join(st.session_state.card_front_fields)}｜反面：{' + '.join(st.session_state.card_back_fields)}"
+            f"📦 {scope_label}{cat_label}｜{st.session_state.card_index + 1} / {len(due_cards)}"
         )
-        st.progress(
-            (st.session_state.card_index + 1) / len(due_cards),
-            text=f"{st.session_state.card_index + 1} / {len(due_cards)}",
-        )
+        st.progress((st.session_state.card_index + 1) / len(due_cards))
 
         with st.container(border=True):
             if not st.session_state.is_flipped:
@@ -835,7 +894,7 @@ elif "Matrix Cards" in choice:
         ):
             st.success("🎉 這輪預習看完了！去 Flash Pulse 進行打字測驗吧！")
     else:
-        st.success("✨ 目前沒有待複習的單字卡！")
+        st.success("✨ 目前沒有符合條件的單字卡！")
 
 
 # ============================================================
@@ -844,7 +903,17 @@ elif "Matrix Cards" in choice:
 elif "Flash Pulse" in choice:
     st.markdown("<div class='main-title'>Flash Pulse</div>", unsafe_allow_html=True)
 
-    due = [w for w in raw_data if str(w.get("next_review"))[:10] <= str(date.today())]
+    pulse_cat = st.selectbox(
+        "📂 練習類別", ["全部"] + all_categories, key="pulse_cat_filter"
+    )
+    all_due = [
+        w for w in raw_data if str(w.get("next_review"))[:10] <= str(date.today())
+    ]
+    due = (
+        [w for w in all_due if (w.get("category") or "預設") == pulse_cat]
+        if pulse_cat != "全部"
+        else all_due
+    )
 
     if due:
         if "pulse_word" not in st.session_state or st.session_state.get(
@@ -858,10 +927,14 @@ elif "Flash Pulse" in choice:
         hint_level = st.session_state.get("hint_level", 0)
 
         with st.container(border=True):
+            cat_display = q.get("category") or "預設"
+            st.markdown(
+                f"<span class='cat-badge'>📂 {cat_display}</span>",
+                unsafe_allow_html=True,
+            )
             st.markdown(f"### 💡 中文提示：**{q['meaning_zh']}**")
             if q.get("example"):
                 st.caption(f"📝 Context: {q['example'].replace(q['word'], '____')}")
-
             if hint_level == 1:
                 st.markdown(
                     f"<div class='hint-badge'>💡 字首提示：{q['word'][0].upper()}...</div>",
@@ -872,7 +945,6 @@ elif "Flash Pulse" in choice:
                     f"<div class='hint-badge'>📖 英文定義：{q.get('meaning_en', '（無英文定義）')}</div>",
                     unsafe_allow_html=True,
                 )
-
             st.caption(
                 f"目前熟練度：{'⭐' * int(q.get('mastery', 1))} L{q.get('mastery', 1)}"
             )
@@ -904,11 +976,9 @@ elif "Flash Pulse" in choice:
                         )
                         st.session_state.pulse_refresh = True
                         st.session_state.hint_level = 0
-
         with col2:
             if st.button("🔊 發音", use_container_width=True):
                 play_pronunciation(q["word"])
-
         with col3:
             if st.button("⏭️ 跳過", use_container_width=True):
                 st.session_state.pulse_refresh = True
@@ -923,7 +993,12 @@ elif "Flash Pulse" in choice:
         }
         st.caption(f"提示狀態：{hint_status[hint_level]}")
     else:
-        st.success("Matrix Stable. No nodes due for review.")
+        msg = (
+            f"「{pulse_cat}」類別目前沒有待複習的單字。"
+            if pulse_cat != "全部"
+            else "Matrix Stable. No nodes due for review."
+        )
+        st.success(msg)
 
 
 # ============================================================
@@ -933,6 +1008,15 @@ elif "Ebbing Log" in choice:
     st.markdown("<div class='main-title'>Ebbing Log</div>", unsafe_allow_html=True)
 
     if not df.empty:
+        ebbing_cat = st.selectbox(
+            "📂 類別篩選", ["全部"] + all_categories, key="ebbing_cat_filter"
+        )
+        df_filtered = (
+            df[df["category"] == ebbing_cat].copy()
+            if ebbing_cat != "全部"
+            else df.copy()
+        )
+
         selected_level = st.radio(
             "篩選 Level：",
             ["全部", 0, 1, 2, 3, 4, 5],
@@ -940,7 +1024,7 @@ elif "Ebbing Log" in choice:
             key="ebbing_level_filter",
         )
 
-        level_counts = df.groupby("mastery").size().reset_index()
+        level_counts = df_filtered.groupby("mastery").size().reset_index()
         level_counts.columns = ["Level", "數量"]
         all_levels = pd.DataFrame({"Level": [0, 1, 2, 3, 4, 5]})
         level_counts = all_levels.merge(level_counts, on="Level", how="left").fillna(0)
@@ -954,14 +1038,15 @@ elif "Ebbing Log" in choice:
                 mode="lines+markers+text",
                 text=level_counts["數量"],
                 textposition="top center",
-                line=dict(color="#2d3436", width=3),
+                line=dict(color="#00cec9", width=3),
                 marker=dict(
-                    size=12, color="#ff7675", line=dict(color="#2d3436", width=2)
+                    size=12, color="#ff7675", line=dict(color="#00cec9", width=2)
                 ),
             )
         )
         fig_levels.update_layout(
-            plot_bgcolor="white",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
             height=280,
             margin=dict(l=0, r=0, t=30, b=0),
             xaxis=dict(
@@ -975,14 +1060,21 @@ elif "Ebbing Log" in choice:
                     "L5 掌握",
                 ],
                 showgrid=True,
-                gridcolor="#f0f0f0",
+                gridcolor="rgba(255,255,255,0.1)",
+                color="#8b949e",
             ),
-            yaxis=dict(showgrid=True, gridcolor="#f0f0f0", title="單字數量"),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor="rgba(255,255,255,0.1)",
+                title="單字數量",
+                color="#8b949e",
+            ),
             showlegend=False,
+            font=dict(color="#e6edf3"),
         )
         st.plotly_chart(fig_levels, use_container_width=True)
 
-        total = len(df)
+        total = len(df_filtered)
         level_colors = [
             "#d63031",
             "#ff7675",
@@ -1008,22 +1100,28 @@ elif "Ebbing Log" in choice:
         col_left, col_right = st.columns([3, 2])
 
         with col_left:
-            if selected_level == "全部":
-                filtered_df = df
-                label_text = "全部單字"
-            else:
-                filtered_df = df[df["mastery"] == int(selected_level)]
-                label_text = f"L{selected_level} 單字"
-
-            st.markdown(f"**📋 {label_text}（{len(filtered_df)} 個）**")
-            if not filtered_df.empty:
+            show_df = (
+                df_filtered
+                if selected_level == "全部"
+                else df_filtered[df_filtered["mastery"] == int(selected_level)]
+            )
+            label_text = f"{'全部' if ebbing_cat == '全部' else ebbing_cat}｜{'全部 Level' if selected_level == '全部' else f'L{selected_level}'}"
+            st.markdown(f"**📋 {label_text}（{len(show_df)} 個）**")
+            if not show_df.empty:
+                display_cols = [
+                    "word",
+                    "meaning_zh",
+                    "category",
+                    "mastery",
+                    "next_review",
+                ]
+                existing = [c for c in display_cols if c in show_df.columns]
                 st.dataframe(
-                    filtered_df[
-                        ["word", "meaning_zh", "mastery", "next_review"]
-                    ].rename(
+                    show_df[existing].rename(
                         columns={
                             "word": "單字",
                             "meaning_zh": "中文定義",
+                            "category": "類別",
                             "mastery": "Level",
                             "next_review": "下次複習",
                         }
@@ -1033,33 +1131,69 @@ elif "Ebbing Log" in choice:
                     height=350,
                 )
             else:
-                st.info("此分類目前沒有單字！")
+                st.info("此條件目前沒有單字。")
 
-        # --- Code Completed From Here ---
         with col_right:
-            st.markdown("**📅 未來 7 天複習預測**")
+            st.markdown("**⏰ 最近待複習（前 10 筆）**")
+            upcoming = df_filtered.sort_values("next_review").head(10)
+            for _, row in upcoming.iterrows():
+                days_until = (
+                    pd.to_datetime(row["next_review"]).date() - date.today()
+                ).days
+                badge = (
+                    f"🔴 過期{abs(days_until)}天"
+                    if days_until < 0
+                    else ("🟡 今日" if days_until == 0 else f"🟢 {days_until}天後")
+                )
+                cat_tag = row.get("category") or "預設"
+                st.markdown(
+                    f"<div style='padding:0.4rem 0.6rem;margin-bottom:0.4rem;"
+                    f"background:rgba(255,255,255,0.05);border-radius:8px;font-size:0.88rem'>"
+                    f"<b>{row['word']}</b> {badge} <span class='cat-badge'>{cat_tag}</span><br>"
+                    f"<span style='color:#8b949e'>{row['meaning_zh']} ｜ L{row['mastery']}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
 
-            df_review = df.copy()
-            df_review["next_review"] = pd.to_datetime(df_review["next_review"]).dt.date
-
-            future_dates = [date.today() + timedelta(days=i) for i in range(7)]
-            future_counts = (
-                df_review[df_review["next_review"].isin(future_dates)]
-                .groupby("next_review")
-                .size()
+        st.divider()
+        with st.expander("📈 複習負載預測圖"):
+            v_d = st.select_slider(
+                "預測天數", options=[7, 14, 30, 90, 180, 365], value=30
             )
-
-            for d in future_dates:
-                count = future_counts.get(d, 0)
-                is_today = " (今日)" if d == date.today() else ""
-
-                # Visual bar simulation using markdown
-                bar_length = min(count, 15)  # Cap bar visual length at 15
-                bar = "🟦" * bar_length if count > 0 else "⬜"
-
-                st.markdown(f"**{d.strftime('%m/%d')}**{is_today}")
-                st.caption(f"{bar} **{count}** 個單字")
-                st.write("")
-
+            df_copy = df_filtered.copy()
+            df_copy["date"] = pd.to_datetime(df_copy["next_review"]).dt.date
+            dates = [date.today() + timedelta(days=i) for i in range(v_d + 1)]
+            counts = [len(df_copy[df_copy["date"] <= d]) for d in dates]
+            fig = go.Figure(
+                go.Scatter(
+                    x=dates,
+                    y=counts,
+                    mode="lines+markers",
+                    line=dict(color="#00cec9", width=3),
+                    marker=dict(size=8, color="#ff7675"),
+                )
+            )
+            fig.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                hovermode="x unified",
+                margin=dict(l=0, r=0, t=10, b=0),
+                height=300,
+                xaxis=dict(
+                    showgrid=True,
+                    gridcolor="rgba(255,255,255,0.1)",
+                    title="日期",
+                    color="#8b949e",
+                ),
+                yaxis=dict(
+                    showgrid=True,
+                    gridcolor="rgba(255,255,255,0.1)",
+                    title="累計待複習單字數",
+                    color="#8b949e",
+                ),
+                showlegend=False,
+                font=dict(color="#e6edf3"),
+            )
+            st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("目前系統中還沒有單字，請先到 Matrix Core 新增！")
+        st.info("Insufficient data for log prediction.")
